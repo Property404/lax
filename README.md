@@ -1,20 +1,33 @@
 # LAX: Locate Args and Execute
 
-An binary/executable proxy that transforms arguments starting with the "@"
-symbol into full directory paths
+An argument substitution utility 
 
-## Usage
+## Description
 
-This will open some file "Config.in" with vim, that exists somewhere in the
-current directory or the children of the current directory.  
+Given an binary and argument "@foo", lax will will find the file "foo" and
+replace "@foo" with foo's full path, and execute the binary with the new arguments    
 
-`lax vim @Config.in`  
+`lax echo @foo` -> `echo ./foobar/foo`  
 
-If there are multiple matches, the user will be prompted to pick one.  
+Multiple @'s are possible:  
 
-Without the "@" symbol, vim will work as normal:  
+`lax stat @foo @bar @baz` -> `stat ./foobar/foo ./foobar/target/bar ./foobar/src/baz`  
 
-`lax vim Config.in`  
+Mixing and matching @ arguments and non-@ arguments is also possible:  
 
-And just look for "Config.in" in the current directory
+`lax cat -n @foo bar @baz` -> `cat -n ./foobar/foo bar ./foobar/src/baz`  
 
+If there are multiple files matching the given name, Lax will prompt you to choose.  
+
+## Primary Use Case  
+
+In your `.bashrc`, you can write `alias vim="vim lax"`  
+
+From now on, you can just write:  
+
+`vim @foo` -> `vim ./foobar/foo`  
+
+This makes working on projects with deep directories, like U-Boot and Yocto,
+easier. If you want to edit a certain defconfig, you can  
+
+`vim @my_dumb_little_defconfig`  
