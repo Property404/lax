@@ -1,11 +1,13 @@
-extern crate walkdir;
 use std::env;
 use std::io;
 use std::io::Write;
 use std::process::{self, Command};
 use walkdir::{DirEntry, WalkDir};
 
-fn fetch_matches(pattern: &String, paths: &mut Vec<String>) {
+mod argparser;
+use argparser::{ArgumentParser, Flag};
+
+fn fetch_matches(pattern: &String, paths: &mut Vec<String>, config: &Config) {
     // Remove the "@" symbol;
     let pattern = &pattern[1..];
 
@@ -26,7 +28,7 @@ fn fetch_matches(pattern: &String, paths: &mut Vec<String>) {
                 if file_name == pattern {
                     // String comparison is a lot faster than fetching the metadata, so keep this
                     // in the inner if block
-                    if e.metadata().unwrap().is_file() {
+                    if config.match_with_dirs || e.metadata().unwrap().is_file() {
                         paths.push(path.display().to_string());
                     }
                 }
@@ -35,13 +37,12 @@ fn fetch_matches(pattern: &String, paths: &mut Vec<String>) {
     }
 }
 
-fn locate_target(pattern: &String) -> Option<String> {
+fn locate_target(pattern: &String, config: &Config) -> Option<String> {
     // Get list of all matches
     let mut paths = Vec::new();
-    fetch_matches(pattern, &mut paths);
+    fetch_matches(pattern, &mut paths, config);
 
     if paths.len() == 0 {
-        println!("No match for '{}'", pattern);
         return None;
     }
 
@@ -86,26 +87,74 @@ fn locate_target(pattern: &String) -> Option<String> {
     Some(target)
 }
 
+struct Config {
+    // Do '@' patterns match with directories, or only files?
+    match_with_dirs: bool,
+}
+
 fn main() {
     let mut args: Vec<String> = env::args().collect();
+    let mut ap = ArgumentParser::new(
+        "lex",
+        "Argument substitution utility",
+        "lex [FLAGS] BINARY [ARGS...]",
+    )
+    .add_flag(
+        Flag::new("help")
+            .set_description("Display this message")
+            .set_long("--help")
+            .set_short('h'),
+    )
+    .add_flag(
+        Flag::new("directories")
+            .set_description("Match directories")
+            .set_long("--directories")
+            .set_short('d'),
+    );
 
     if args.len() < 2 {
         eprintln!("No arguments");
         process::exit(1);
     }
 
-    for arg in &mut args {
+    let mut config = Config {
+        match_with_dirs: false,
+    };
+
+    // Where the binary is located as an index within args
+    let mut command_location = 1;
+
+    // Consider the first flags to be flags for lex itself, until a non-flag is found
+    for arg in &mut args[1..] {
+        if arg.starts_with("-") {
+            ap.process_argument(arg.as_str());
+            command_location += 1;
+            continue;
+        };
+        break;
+    }
+    if ap.has("help") {
+        println!("{}", ap.help());
+        return;
+    }
+    if ap.has("directories") {
+        config.match_with_dirs = true;
+    }
+
+    // After this, we only do '@' transformations
+    for arg in &mut args[command_location..] {
         if arg.starts_with("@") {
-            if let Some(target) = locate_target(arg) {
+            if let Some(target) = locate_target(arg, &config) {
                 *arg = target;
             } else {
-                eprintln!("Couldn't find {}", &arg[1..]);
+                eprintln!("Couldn't find file '{}'", &arg[1..]);
                 process::exit(1);
             }
         }
     }
 
-    let mut com = Command::new(&args[1]);
-    com.args(&args[2..]);
+    // Go ahead and run the binary with the transformed arguments
+    let mut com = Command::new(&args[command_location]);
+    com.args(&args[command_location + 1..]);
     com.status().expect("Failed!");
 }
