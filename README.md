@@ -21,7 +21,7 @@ If there are multiple files matching the given name, Lax will prompt you to choo
 
 ## Primary Use Case  
 
-In your `.bashrc`, you can write `alias vim="vim lax"`  
+In your `.bashrc`, you can write `alias vim="lax vim"`  
 
 From now on, you can just write:  
 
