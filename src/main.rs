@@ -6,6 +6,9 @@ use std::process::Command;
 use walkdir::{DirEntry, WalkDir};
 
 fn fetch_matches(pattern: &String, paths: &mut Vec<String>) {
+    // Remove the "@" symbol;
+    let pattern = &pattern[1..];
+
     // Filter out hidden directories like ".git"
     let matcher = |entry: &DirEntry| {
         let file_name = entry.file_name().to_str();
@@ -23,8 +26,7 @@ fn fetch_matches(pattern: &String, paths: &mut Vec<String>) {
             match e.file_name() {
                 Some(file_name) => match file_name.to_str() {
                     Some(s) => {
-                        let s = String::from(s);
-                        if format!("@{}", s) == *pattern {
+                        if s == pattern {
                             paths.push(e.display().to_string());
                         }
                     }
