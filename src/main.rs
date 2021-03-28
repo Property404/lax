@@ -2,7 +2,7 @@ extern crate walkdir;
 use std::env;
 use std::io;
 use std::io::Write;
-use std::process::Command;
+use std::process::{self, Command};
 use walkdir::{DirEntry, WalkDir};
 
 fn fetch_matches(pattern: &String, paths: &mut Vec<String>) {
@@ -91,7 +91,7 @@ fn main() {
 
     if args.len() < 2 {
         eprintln!("No arguments");
-        return;
+        process::exit(1);
     }
 
     for arg in &mut args {
@@ -100,7 +100,7 @@ fn main() {
                 *arg = target;
             } else {
                 eprintln!("Couldn't find {}", &arg[1..]);
-                return;
+                process::exit(1);
             }
         }
     }
