@@ -20,13 +20,14 @@ fn fetch_matches(pattern: &String, paths: &mut Vec<String>) {
 
     let walker = WalkDir::new(".").into_iter();
     for e in walker.filter_entry(matcher).filter_map(|e| e.ok()) {
-        if let Some(file_name) = e.path().file_name() {
+        let path = e.path();
+        if let Some(file_name) = path.file_name() {
             if let Some(file_name) = file_name.to_str() {
                 if file_name == pattern {
                     // String comparison is a lot faster than fetching the metadata, so keep this
                     // in the inner if block
                     if e.metadata().unwrap().is_file() {
-                        paths.push(file_name.to_string());
+                        paths.push(path.display().to_string());
                     }
                 }
             }
