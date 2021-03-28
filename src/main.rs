@@ -3,10 +3,20 @@ use std::env;
 use std::io;
 use std::io::Write;
 use std::process::Command;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 fn fetch_matches(pattern: &String, paths: &mut Vec<String>) {
-    for e in WalkDir::new(".").into_iter().filter_map(|e| e.ok()) {
+    // Filter out hidden directories like ".git"
+    let matcher = |entry: &DirEntry| {
+        let file_name = entry.file_name().to_str();
+        let is_hidden = file_name
+            .map(|s| s.starts_with(".") && s != ".")
+            .unwrap_or(false);
+        !is_hidden
+    };
+
+    let walker = WalkDir::new(".").into_iter();
+    for e in walker.filter_entry(matcher).filter_map(|e| e.ok()) {
         if e.metadata().unwrap().is_file() {
             let e = e.path();
 
@@ -14,7 +24,7 @@ fn fetch_matches(pattern: &String, paths: &mut Vec<String>) {
                 Some(file_name) => match file_name.to_str() {
                     Some(s) => {
                         let s = String::from(s);
-                        if !s.starts_with(".") && format!("@{}", s) == *pattern {
+                        if format!("@{}", s) == *pattern {
                             paths.push(e.display().to_string());
                         }
                     }
