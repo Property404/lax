@@ -1,37 +1,44 @@
-// A simple argument parser, because all the existing ones are too complex, yet not flexible enough
-// to deal with the use case of ending parsing after finding an argument not beginning with "-"
+//! A simple argument parser, because all the existing ones are too complex, yet not flexible enough
+//! to deal with the use case of ending parsing after finding an argument not beginning with "-".
+//!
+//! Methods in this module exit upon failure.
 
 use std::process;
 
+/// A command line flag.
 pub struct Flag {
-    // What the client refers to this flag as
+    /// What the client refers to this flag as
     name: &'static str,
 
-    // Description for help text
+    /// Description for help text
     description: Option<&'static str>,
 
-    // --long style flag
+    /// --long style flag
     long: Option<&'static str>,
 
-    // -sh -or -t style flag
+    /// -sh -or -t style flag
     short: Option<char>,
 
-    // Has this flag been matched yet?
+    /// Has this flag been matched yet?
     has: bool,
 }
 
 pub struct ArgumentParser {
-    // App meta data to display in help/usage text
+    /// Name of this program
     name: &'static str,
+
+    /// Decription of this program
     description: &'static str,
+
+    /// Usage text of this program
     usage: &'static str,
 
-    // Could be a hashmap, but we're dealing with a very small number of flags, so this is more
-    // efficient
+    /// All possible flags the user can pass
     flags: Vec<Flag>,
 }
 
 impl ArgumentParser {
+    /// Constructor.
     pub fn new(name: &'static str, description: &'static str, usage: &'static str) -> Self {
         ArgumentParser {
             name,
@@ -41,11 +48,14 @@ impl ArgumentParser {
         }
     }
 
+    /// Add a processable flag
     pub fn add_flag(mut self, flag: Flag) -> Self {
         self.flags.push(flag);
         self
     }
 
+    /// Process a single argument. Determine what flag it's associated with and fail if there's no
+    /// associated flag.
     pub fn process_argument(&mut self, argument: &str) {
         let is_long = argument.starts_with("--");
 
@@ -75,7 +85,10 @@ impl ArgumentParser {
         }
     }
 
-    // Check if a particular flag has been matched
+    /// Returns true if a particular flag has been matched.
+    ///
+    /// # Panics
+    /// Panics if flag doesn't exist.
     pub fn has(&self, name: &str) -> bool {
         for flag in &(self.flags) {
             if flag.name == name {
@@ -85,6 +98,7 @@ impl ArgumentParser {
         panic!("No such flag '{}' exists!", name)
     }
 
+    /// Return the help text.
     pub fn help(&self) -> String {
         let mut text: String = format!(
             "{}\n{}\n\nUSAGE:\n    {}\n\nFLAGS:\n",
@@ -100,6 +114,7 @@ impl ArgumentParser {
 }
 
 impl Flag {
+    /// Constructor.
     pub fn new(name: &'static str) -> Self {
         Flag {
             name,
@@ -110,21 +125,26 @@ impl Flag {
         }
     }
 
+    /// Set the character used as the short name of this flag. E.g. 'c' for '-c'.
     pub fn set_short(mut self, short: char) -> Self {
         self.short = Some(short);
         self
     }
 
-    pub fn set_description(mut self, description: &'static str) -> Self {
-        self.description = Some(description);
-        self
-    }
-
+    /// Set the long name, e.g. "--long". Be sure to include the "--".
     pub fn set_long(mut self, long: &'static str) -> Self {
         self.long = Some(long);
         self
     }
 
+    /// Set the description to be used in the help/usage message.
+    pub fn set_description(mut self, description: &'static str) -> Self {
+        self.description = Some(description);
+        self
+    }
+
+    /// Check if long name matches the given string, including the "--". Later, the client can call
+    /// `has_match()` which will return true if(but not only if) it had matched.
     pub fn match_against_long(&mut self, pattern: &str) -> bool {
         let long = self.long.unwrap_or("");
 
@@ -136,6 +156,8 @@ impl Flag {
         false
     }
 
+    /// Check if short name matches the given char. Later, the client can call `has_match()` which
+    /// will return true if(but not only if) it had matched.
     pub fn match_against_short(&mut self, pattern: char) -> bool {
         if let Some(short) = self.short {
             if pattern == short {
@@ -147,11 +169,12 @@ impl Flag {
         false
     }
 
+    /// Returns true if this flag has been matched before.
     pub fn has_match(&self) -> bool {
         self.has
     }
 
-    // Make small summary of flag for use in help menu
+    /// Make small summary of flag for use in help menu.
     pub fn format(&self) -> String {
         let mut text = String::new();
 
