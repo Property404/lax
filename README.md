@@ -17,6 +17,10 @@ Mixing and matching @ arguments and non-@ arguments is also possible:
 
 `lax cat -n @foo bar @baz` -> `cat -n ./foobar/foo bar ./foobar/src/baz`  
 
+Limited globbing is supported:  
+
+`lax echo *.rs` -> `echo ./some/directory/main.rs`  
+
 If there are multiple files matching the given name, Lax will prompt you to choose.  
 
 ## Primary Use Case  

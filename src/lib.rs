@@ -1,3 +1,4 @@
+use globset::Glob;
 use walkdir::{DirEntry, WalkDir};
 
 mod errors;
@@ -9,9 +10,10 @@ pub struct Expander {
 }
 
 impl Expander {
-    fn fetch_matches(&self, pattern: &String, paths: &mut Vec<String>) {
+    fn fetch_matches(&self, pattern: &String, paths: &mut Vec<String>) -> LaxResult {
         // Remove the "@" symbol;
         let pattern = &pattern[1..];
+        let glob = Glob::new(pattern)?.compile_matcher();
 
         // Filter out hidden directories like ".git"
         let matcher = |entry: &DirEntry| {
@@ -27,7 +29,7 @@ impl Expander {
             let path = e.path();
             if let Some(file_name) = path.file_name() {
                 if let Some(file_name) = file_name.to_str() {
-                    if file_name == pattern {
+                    if glob.is_match(file_name) {
                         // String comparison is a lot faster than fetching the metadata, so keep this
                         // in the inner if block
                         if self.config.match_with_dirs || e.metadata().unwrap().is_file() {
@@ -37,12 +39,14 @@ impl Expander {
                 }
             }
         }
+
+        Ok(())
     }
 
     fn expand_pattern(&self, pattern: &String) -> LaxResult<Vec<String>> {
         // Get list of all matches
         let mut paths = Vec::new();
-        self.fetch_matches(pattern, &mut paths);
+        self.fetch_matches(pattern, &mut paths)?;
 
         if paths.len() == 0 {
             return Err(LaxError::EntityNotFound(pattern.clone()));
