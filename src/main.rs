@@ -6,17 +6,10 @@ mod argparser;
 use argparser::{ArgumentParser, Flag};
 
 fn main() {
-    let mut args: Vec<String> = env::args().collect();
     let mut ap = ArgumentParser::new(
         "lax",
         "Argument substitution utility",
         "lax [FLAGS] BINARY [ARGS...]",
-    )
-    .add_flag(
-        Flag::new("help")
-            .set_description("Display this message")
-            .set_long("--help")
-            .set_short('h'),
     )
     .add_flag(
         Flag::new("directories")
@@ -31,7 +24,10 @@ fn main() {
             .set_short('p'),
     );
 
-    if args.len() < 2 {
+    let args: Vec<String> = env::args().collect();
+    let args = ap.process_arguments(&args);
+
+    if args.is_empty() {
         eprintln!("No arguments");
         process::exit(1);
     }
@@ -40,28 +36,6 @@ fn main() {
         match_with_dirs: false,
     };
 
-    // Where the binary is located as an index within args
-    let mut command_location = 1;
-
-    // Consider the first flags to be flags for lax itself, until a non-flag is found
-    for arg in &mut args[1..] {
-        // Explicitly stop processing args
-        if arg == "--" {
-            command_location += 1;
-            break;
-        }
-
-        if arg.starts_with('-') {
-            ap.process_argument(arg.as_str());
-            command_location += 1;
-            continue;
-        };
-        break;
-    }
-    if ap.has("help") {
-        println!("{}", ap.help());
-        return;
-    }
     if ap.has("directories") {
         config.match_with_dirs = true;
     }
@@ -90,6 +64,7 @@ fn main() {
             option
         },
     };
+
     let args = match expander.expand_arguments(args) {
         Ok(args) => args,
         Err(err) => {
@@ -99,11 +74,11 @@ fn main() {
     };
 
     if ap.has("print_only") {
-        print!("{}", &args[command_location..].join(" "));
+        print!("{}", args.join(" "));
     } else {
         // Go ahead and run the binary with the transformed arguments
-        let mut com = Command::new(&args[command_location]);
-        com.args(&args[command_location + 1..]);
+        let mut com = Command::new(&args[0]);
+        com.args(&args[1..]);
         com.status().expect("Failed!");
     }
 }

@@ -5,6 +5,9 @@
 
 use std::process;
 
+const HELP_FLAG: &str = "!HELP";
+const VERSION_FLAG: &str = "!VERSION";
+
 /// A command line flag.
 pub struct Flag {
     /// What the client refers to this flag as
@@ -46,6 +49,17 @@ impl ArgumentParser {
             usage,
             flags: Vec::new(),
         }
+        .add_flag(
+            Flag::new(HELP_FLAG)
+                .set_description("Prints help information")
+                .set_long("--help")
+                .set_short('h'),
+        )
+        .add_flag(
+            Flag::new(VERSION_FLAG)
+                .set_description("Print version info and exit")
+                .set_long("--version"),
+        )
     }
 
     /// Add a processable flag
@@ -56,7 +70,7 @@ impl ArgumentParser {
 
     /// Process a single argument. Determine what flag it's associated with and fail if there's no
     /// associated flag.
-    pub fn process_argument(&mut self, argument: &str) {
+    fn process_argument(&mut self, argument: &str) {
         let is_long = argument.starts_with("--");
 
         if is_long {
@@ -65,24 +79,56 @@ impl ArgumentParser {
                     return;
                 }
             }
-            eprintln!("Invalid flag \"{}\"", argument);
+            eprintln!("Invalid flag '{}'", argument);
             process::exit(1);
         }
 
         for character in (&argument[1..]).chars() {
             let mut matched = false;
-
             for flag in &mut (self.flags) {
                 if flag.match_against_short(character) {
                     matched = true;
                 }
             }
-
             if !matched {
                 eprintln!("Invalid flag '{}'", character);
                 process::exit(1);
             }
         }
+    }
+
+    /// Process a list of arguments up until the first non-flag is found,
+    /// then return the flagless part of the vector
+    pub fn process_arguments<'a>(&mut self, arguments: &'a[String]) -> &'a [String] {
+        // Very first argument is just the name, so skip it
+        let mut position: usize = 1;
+
+        for arg in &arguments[position..] {
+            // Explicitly stop processing args
+            if arg == "--" {
+                position += 1;
+                break;
+            }
+
+            if arg.starts_with('-') {
+                self.process_argument(arg.as_str());
+                position += 1;
+                continue;
+            };
+            break;
+        }
+
+        if self.has(HELP_FLAG) {
+            println!("{}", self.help());
+            process::exit(0);
+        };
+
+        if self.has(VERSION_FLAG) {
+            println!("{} {}", self.name, env!("CARGO_PKG_VERSION"));
+            process::exit(0);
+        };
+
+        &arguments[position..]
     }
 
     /// Returns true if a particular flag has been matched.

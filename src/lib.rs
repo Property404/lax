@@ -144,13 +144,13 @@ impl Expander {
     ///
     /// # Returns
     /// The transformed argument list.
-    pub fn expand_arguments(&self, args: Vec<String>) -> LaxResult<Vec<String>> {
+    pub fn expand_arguments(&self, args: &[String]) -> LaxResult<Vec<String>> {
         let mut transformed_args: Vec<String> = Vec::new();
         for arg in args {
             if arg.starts_with('@') {
                 transformed_args.append(&mut self.expand_pattern(&arg)?);
             } else {
-                transformed_args.push(arg);
+                transformed_args.push(arg.to_string());
             }
         }
 
@@ -181,7 +181,7 @@ mod tests {
         let exp = setup();
 
         let arguments = vec!["@foo".to_string()];
-        let expanded = exp.expand_arguments(arguments).unwrap();
+        let expanded = exp.expand_arguments(&arguments).unwrap();
         assert_eq!(expanded, vec!["./tests/foobar/foo"]);
     }
 
@@ -190,7 +190,7 @@ mod tests {
         let exp = setup();
 
         let arguments = vec!["@*.rs^a".to_string()];
-        let expanded = exp.expand_arguments(arguments).unwrap();
+        let expanded = exp.expand_arguments(&arguments).unwrap();
         assert!(expanded.len() > 2);
     }
 
@@ -199,7 +199,7 @@ mod tests {
         let exp = setup();
 
         let arguments = vec!["@*.rs^0".to_string()];
-        let expanded = exp.expand_arguments(arguments).unwrap();
+        let expanded = exp.expand_arguments(&arguments).unwrap();
         assert_eq!(expanded.len(), 1);
     }
 }
