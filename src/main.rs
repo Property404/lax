@@ -23,6 +23,12 @@ fn main() {
             .set_description("Match directories")
             .set_long("--directories")
             .set_short('d'),
+    )
+    .add_flag(
+        Flag::new("print_only")
+            .set_description("Print transformed args to stdout, but don't execute")
+            .set_long("--print-only")
+            .set_short('p'),
     );
 
     if args.len() < 2 {
@@ -39,6 +45,12 @@ fn main() {
 
     // Consider the first flags to be flags for lax itself, until a non-flag is found
     for arg in &mut args[1..] {
+        // Explicitly stop processing args
+        if arg == "--" {
+            command_location += 1;
+            break;
+        }
+
         if arg.starts_with('-') {
             ap.process_argument(arg.as_str());
             command_location += 1;
@@ -59,14 +71,14 @@ fn main() {
         config,
         selector: |paths, display_menu| {
             if display_menu {
-                println!("Found the following files");
-                println!("=========================");
+                eprintln!("Found the following files");
+                eprintln!("=========================");
                 for (i, path) in paths.iter().enumerate() {
-                    println!("{}. {}", i, path);
+                    eprintln!("{}. {}", i, path);
                 }
             }
 
-            print!("Select> ");
+            eprint!("Select> ");
             match io::stdout().flush() {
                 Ok(_) => (),
                 Err(error) => eprintln!("Error: {}", error),
@@ -86,8 +98,12 @@ fn main() {
         }
     };
 
-    // Go ahead and run the binary with the transformed arguments
-    let mut com = Command::new(&args[command_location]);
-    com.args(&args[command_location + 1..]);
-    com.status().expect("Failed!");
+    if ap.has("print_only") {
+        print!("{}", &args[command_location..].join(" "));
+    } else {
+        // Go ahead and run the binary with the transformed arguments
+        let mut com = Command::new(&args[command_location]);
+        com.args(&args[command_location + 1..]);
+        com.status().expect("Failed!");
+    }
 }
