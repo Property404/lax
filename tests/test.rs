@@ -4,7 +4,7 @@ fn setup_command() -> assert_cmd::cmd::Command {
     assert_cmd::Command::cargo_bin("lax").unwrap()
 }
 
-// Lex should only work when presented with a binary
+// Lax should only work when presented with a binary
 #[test]
 fn fails_with_no_binary() {
     setup_command().assert().failure();
@@ -35,7 +35,7 @@ fn no_such_argument() {
         .failure();
 }
 
-// Lex should just work as the regular program when not presented with additional arguments beyond
+// Lax should just work as the regular program when not presented with additional arguments beyond
 // the binary
 //
 // "lax ls" should be functionally the same as "ls"

@@ -27,7 +27,7 @@ pub struct ArgumentParser {
     /// Name of this program
     name: &'static str,
 
-    /// Decription of this program
+    /// Description of this program
     description: &'static str,
 
     /// Usage text of this program
