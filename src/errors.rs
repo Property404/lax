@@ -6,6 +6,9 @@ pub enum LaxError {
     #[error("Could not find file or directory: {0}")]
     EntityNotFound(String),
 
+    #[error("Selector parse error")]
+    SelectorParsing(String),
+
     #[error("{0}")]
     IoError(#[from] io::Error),
 

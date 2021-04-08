@@ -57,38 +57,27 @@ fn main() {
     // After this, we only do '@' transformations
     let expander = lax::Expander {
         config,
-        selector: |mut paths| {
-            println!("Found the following files");
-            println!("=========================");
-            let mut i = 0;
-            for path in &paths {
-                println!("{}. {}", i, path);
-                i += 1;
-            }
-
-            loop {
-                print!("Select> ");
-                match io::stdout().flush() {
-                    Ok(_) => (),
-                    Err(error) => eprintln!("Error: {}", error),
-                };
-                let mut option = String::new();
-                io::stdin()
-                    .read_line(&mut option)
-                    .expect("Failed to read from stdin");
-                let option = option.trim();
-
-                let option: usize = match option.parse() {
-                    Ok(num) => num,
-                    Err(_) => continue,
-                };
-
-                if option >= paths.len() {
-                    continue;
+        selector: |paths, display_menu| {
+            if display_menu {
+                println!("Found the following files");
+                println!("=========================");
+                let mut i = 0;
+                for path in paths {
+                    println!("{}. {}", i, path);
+                    i += 1;
                 }
-
-                return vec![paths.remove(option)];
             }
+
+            print!("Select> ");
+            match io::stdout().flush() {
+                Ok(_) => (),
+                Err(error) => eprintln!("Error: {}", error),
+            };
+            let mut option = String::new();
+            io::stdin()
+                .read_line(&mut option)
+                .expect("Failed to read from stdin");
+            return option;
         },
     };
     let args = match expander.expand_arguments(args) {
