@@ -1,15 +1,31 @@
+//! Transform command line arguments by expanding '@' patterns.
+#![warn(missing_docs)]
+
 use globset::Glob;
 use walkdir::{DirEntry, WalkDir};
 
 mod errors;
 pub use errors::{LaxError, LaxResult};
 
+/// Struct used to expand '@' patterns.
 pub struct Expander {
+    /// Configuration object.
     pub config: Config,
+    /// A callback function that provides the user with a TUI/CLI menu when a glob pattern matches
+    /// more than one result, and no selector is given in the relevant '@' pattern.
+    ///
+    /// This should return a selector string.
+    ///
+    /// The first parameter is a list of potential matches.
+    /// The second parameter will be true if this is the first time this callback is called for a
+    /// particular '@' pattern, and false otherwise. This can be used to provide the user with the
+    /// list of matches on first call, but not on the following calls (eg the user enters an
+    /// invalid selector)
     pub selector: fn(&Vec<String>, bool) -> String,
 }
 
 impl Expander {
+    /// Expand a glob pattern into all its potential matches.
     fn fetch_matches(&self, pattern: &str, paths: &mut Vec<String>) -> LaxResult {
         let glob = Glob::new(pattern)?.compile_matcher();
 
@@ -41,6 +57,11 @@ impl Expander {
         Ok(())
     }
 
+    // Apply selector to a list of paths.
+    //
+    // Selectors can be:
+    // 0-N: Select path number #n
+    // 'a': Select all paths
     fn parse_selector(
         mut paths: Vec<String>,
         selector: &str,
@@ -63,6 +84,14 @@ impl Expander {
         (vec![], Some(vec![paths.remove(index)]))
     }
 
+    // Expand an '@' pattern into all its matches, which are narrowed down by either the '@'
+    // pattern's selector, or a selector given from a CLI/TUI menu.
+    //
+    // '@' patterns are in the form:
+    // @GLOB_PATTERN[^SELECTOR]
+    //
+    // Where GLOB_PATTERN expands into multiple paths, and a selector(possibly SELECTOR) is used to
+    // narrow them down
     fn expand_pattern(&self, pattern: &str) -> LaxResult<Vec<String>> {
         // Find selector in pattern
         let mut selector_point = pattern.len();
@@ -92,7 +121,7 @@ impl Expander {
                 return Ok(selected_paths);
             }
 
-            Err(LaxError::SelectorParsing(selector))
+            Err(LaxError::InvalidSelector(selector))
         } else {
             // No selector - given. Break into CLI or TUI menu
             let mut display_menu = true;
@@ -111,6 +140,10 @@ impl Expander {
         }
     }
 
+    /// Transform a list of arguments containing 0 or more '@' patterns.
+    ///
+    /// # Returns
+    /// The transformed argument list.
     pub fn expand_arguments(&self, args: Vec<String>) -> LaxResult<Vec<String>> {
         let mut transformed_args: Vec<String> = Vec::new();
         for arg in args {
@@ -125,6 +158,7 @@ impl Expander {
     }
 }
 
+/// Struct used for configuring an instance of Expander.
 pub struct Config {
     /// Do '@' patterns match with directories, or only files?
     pub match_with_dirs: bool,
