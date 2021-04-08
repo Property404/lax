@@ -8,9 +8,9 @@ use argparser::{ArgumentParser, Flag};
 fn main() {
     let mut args: Vec<String> = env::args().collect();
     let mut ap = ArgumentParser::new(
-        "lex",
+        "lax",
         "Argument substitution utility",
-        "lex [FLAGS] BINARY [ARGS...]",
+        "lax [FLAGS] BINARY [ARGS...]",
     )
     .add_flag(
         Flag::new("help")
@@ -37,7 +37,7 @@ fn main() {
     // Where the binary is located as an index within args
     let mut command_location = 1;
 
-    // Consider the first flags to be flags for lex itself, until a non-flag is found
+    // Consider the first flags to be flags for lax itself, until a non-flag is found
     for arg in &mut args[1..] {
         if arg.starts_with("-") {
             ap.process_argument(arg.as_str());

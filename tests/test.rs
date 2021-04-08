@@ -38,7 +38,7 @@ fn no_such_argument() {
 // Lex should just work as the regular program when not presented with additional arguments beyond
 // the binary
 //
-// "lex ls" should be functionally the same as "ls"
+// "lax ls" should be functionally the same as "ls"
 #[test]
 fn no_args_check() {
     setup_command().arg("ls").assert().success();
