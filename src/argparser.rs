@@ -180,7 +180,7 @@ impl Flag {
 
         if let Some(short) = self.short {
             text = format!("{}-{}", text, short);
-            if let Some(_) = self.long {
+            if self.long.is_some() {
                 text += ", ";
             }
         }

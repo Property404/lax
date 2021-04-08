@@ -17,7 +17,7 @@ impl Expander {
         let matcher = |entry: &DirEntry| {
             let file_name = entry.file_name().to_str();
             let is_hidden = file_name
-                .map(|s| s.starts_with(".") && s != ".")
+                .map(|s| s.starts_with('.') && s != ".")
                 .unwrap_or(false);
             !is_hidden
         };
@@ -43,7 +43,7 @@ impl Expander {
 
     fn parse_selector(
         mut paths: Vec<String>,
-        selector: &String,
+        selector: &str,
     ) -> (Vec<String>, Option<Vec<String>>) {
         // Expand all
         if selector == "a" {
@@ -60,10 +60,10 @@ impl Expander {
             return (paths, None);
         }
 
-        return (vec![], Some(vec![paths.remove(index)]));
+        (vec![], Some(vec![paths.remove(index)]))
     }
 
-    fn expand_pattern(&self, pattern: &String) -> LaxResult<Vec<String>> {
+    fn expand_pattern(&self, pattern: &str) -> LaxResult<Vec<String>> {
         // Find selector in pattern
         let mut selector_point = pattern.len();
         let mut selector = None;
@@ -76,8 +76,8 @@ impl Expander {
         let mut paths = Vec::new();
         self.fetch_matches(&pattern[1..selector_point], &mut paths)?;
 
-        if paths.len() == 0 {
-            return Err(LaxError::EntityNotFound(pattern.clone()));
+        if paths.is_empty() {
+            return Err(LaxError::EntityNotFound(pattern.to_string()));
         }
         if paths.len() == 1 {
             return Ok(vec![paths.remove(0)]);
@@ -92,7 +92,7 @@ impl Expander {
                 return Ok(selected_paths);
             }
 
-            return Err(LaxError::SelectorParsing(selector));
+            Err(LaxError::SelectorParsing(selector))
         } else {
             // No selector - given. Break into CLI or TUI menu
             let mut display_menu = true;
@@ -114,7 +114,7 @@ impl Expander {
     pub fn expand_arguments(&self, args: Vec<String>) -> LaxResult<Vec<String>> {
         let mut transformed_args: Vec<String> = Vec::new();
         for arg in args {
-            if arg.starts_with("@") {
+            if arg.starts_with('@') {
                 transformed_args.append(&mut self.expand_pattern(&arg)?);
             } else {
                 transformed_args.push(arg);

@@ -39,7 +39,7 @@ fn main() {
 
     // Consider the first flags to be flags for lax itself, until a non-flag is found
     for arg in &mut args[1..] {
-        if arg.starts_with("-") {
+        if arg.starts_with('-') {
             ap.process_argument(arg.as_str());
             command_location += 1;
             continue;
@@ -61,10 +61,8 @@ fn main() {
             if display_menu {
                 println!("Found the following files");
                 println!("=========================");
-                let mut i = 0;
-                for path in paths {
+                for (i, path) in paths.iter().enumerate() {
                     println!("{}. {}", i, path);
-                    i += 1;
                 }
             }
 
@@ -77,7 +75,7 @@ fn main() {
             io::stdin()
                 .read_line(&mut option)
                 .expect("Failed to read from stdin");
-            return option;
+            option
         },
     };
     let args = match expander.expand_arguments(args) {
