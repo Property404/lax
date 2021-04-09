@@ -99,7 +99,7 @@ impl ArgumentParser {
 
     /// Process a list of arguments up until the first non-flag is found,
     /// then return the flagless part of the vector
-    pub fn process_arguments<'a>(&mut self, arguments: &'a[String]) -> &'a [String] {
+    pub fn process_arguments<'a>(&mut self, arguments: &'a [String]) -> &'a [String] {
         // Very first argument is just the name, so skip it
         let mut position: usize = 1;
 

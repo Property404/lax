@@ -66,13 +66,14 @@ impl Expander {
         mut paths: Vec<String>,
         selector: &str,
     ) -> (Vec<String>, Option<Vec<String>>) {
+        let selector = selector.trim();
+
         // Expand all
         if selector == "a" {
             return (vec![], Some(paths));
         }
 
-        let index = selector.trim();
-        let index: usize = match index.parse() {
+        let index: usize = match selector.parse() {
             Ok(num) => num,
             Err(_) => return (paths, None),
         };
