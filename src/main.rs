@@ -48,7 +48,7 @@ fn main() {
                 eprintln!("Found the following files");
                 eprintln!("=========================");
                 for (i, path) in paths.iter().enumerate() {
-                    eprintln!("{}. {}", i, path);
+                    eprintln!("{}. {}", i + 1, path);
                 }
             }
 

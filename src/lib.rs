@@ -78,11 +78,12 @@ impl Expander {
             Err(_) => return (paths, None),
         };
 
-        if index >= paths.len() {
+        // Selectors are 1-indexed
+        if index < 1 || index > paths.len() {
             return (paths, None);
         }
 
-        (vec![], Some(vec![paths.remove(index)]))
+        (vec![], Some(vec![paths.remove(index - 1)]))
     }
 
     // Expand an '@' pattern into all its matches, which are narrowed down by either the '@'
