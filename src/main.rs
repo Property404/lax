@@ -1,6 +1,6 @@
 use std::env;
 use std::io::{self, Write};
-use std::process::{self, Command};
+use std::process::{self};
 
 mod argparser;
 use argparser::{ArgumentParser, Flag};
@@ -87,8 +87,12 @@ fn main() {
         print!("{}", args.join(" "));
     } else {
         // Go ahead and run the binary with the transformed arguments
-        let mut com = Command::new(&args[0]);
-        com.args(&args[1..]);
-        com.status().expect("Failed!");
+        let program = &args[0];
+        let args = &args[1..];
+
+        // Shouldn't return
+        let err = exec::Command::new(program).args(args).exec();
+        eprintln!("Failed to execute binary '{}': {}", program, err);
+        process::exit(1);
     }
 }
