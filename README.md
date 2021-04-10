@@ -49,9 +49,9 @@ If there are multiple files matching the given name, Lax will prompt you to choo
 However, you can also specify which file you'd want ahead of time:  
 
 ```bash
-lax echo *.rs^1 # Select the first match  
-lax echo *.rs^2 # Select the second match  
-lax echo *.rs^a # Expand to all matches
+lax echo @*.rs^1 # Select the first match  
+lax echo @*.rs^2 # Select the second match  
+lax echo @*.rs^a # Expand to all matches
 ```  
 
 Now you know the full syntax for "@" patterns:  
