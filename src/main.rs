@@ -13,9 +13,15 @@ fn main() {
     )
     .add_flag(
         Flag::new("directories")
-            .set_description("Match directories")
+            .set_description("Only match directories")
             .set_long("--directories")
             .set_short('d'),
+    )
+    .add_flag(
+        Flag::new("files")
+            .set_description("Only match files")
+            .set_long("--files")
+            .set_short('f'),
     )
     .add_flag(
         Flag::new("print_only")
@@ -33,11 +39,15 @@ fn main() {
     }
 
     let mut config = lax::Config {
-        match_with_dirs: false,
+        match_with_dirs: true,
+        match_with_files: true,
     };
 
     if ap.has("directories") {
-        config.match_with_dirs = true;
+        config.match_with_files = false;
+    }
+    if ap.has("files") {
+        config.match_with_dirs = false;
     }
 
     // After this, we only do '@' transformations

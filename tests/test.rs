@@ -76,7 +76,7 @@ fn fails_when_file_not_found() {
         .failure();
 }
 
-// Ensure the 'match with directories' functionality is working, but not on by default
+// Ensure the 'match with directories' functionality is working
 #[test]
 fn match_with_dirs() {
     setup_command()
@@ -86,6 +86,7 @@ fn match_with_dirs() {
         .assert()
         .success();
     setup_command()
+        .arg("-f")
         .arg("echo")
         .arg("@this_is_a_directory")
         .assert()

@@ -46,7 +46,15 @@ impl Expander {
                     if glob.is_match(file_name) {
                         // String comparison is a lot faster than fetching the metadata, so keep this
                         // in the inner if block
-                        if self.config.match_with_dirs || e.metadata().unwrap().is_file() {
+                        let mut matched =
+                            self.config.match_with_dirs && self.config.match_with_files;
+                        if !matched {
+                            let metadata = e.metadata().unwrap();
+                            matched = (self.config.match_with_dirs && metadata.is_dir())
+                                || (self.config.match_with_files && metadata.is_file());
+                        }
+
+                        if matched {
                             paths.push(path.display().to_string());
                         }
                     }
@@ -162,8 +170,10 @@ impl Expander {
 
 /// Struct used for configuring an instance of Expander.
 pub struct Config {
-    /// Do '@' patterns match with directories, or only files?
+    /// Do '@' patterns match with directories?
     pub match_with_dirs: bool,
+    /// Do '@' patterns match with files?
+    pub match_with_files: bool,
 }
 
 #[cfg(test)]
@@ -174,6 +184,7 @@ mod tests {
         Expander {
             config: Config {
                 match_with_dirs: false,
+                match_with_files: true,
             },
             selector: |_, _| panic!("Oh god a choice!"),
         }
@@ -200,7 +211,7 @@ mod tests {
     fn expand_with_single_selector() {
         let exp = setup();
 
-        let arguments = vec!["@*.rs^0".to_string()];
+        let arguments = vec!["@*.rs^1".to_string()];
         let expanded = exp.expand_arguments(&arguments).unwrap();
         assert_eq!(expanded.len(), 1);
     }
