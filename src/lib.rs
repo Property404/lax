@@ -2,7 +2,7 @@
 #![warn(missing_docs)]
 use std::path::Path;
 
-use globset::Glob;
+use globset::GlobBuilder;
 use walkdir::{DirEntry, WalkDir};
 
 mod errors;
@@ -34,7 +34,10 @@ impl Expander {
         paths: &mut Vec<String>,
     ) -> LaxResult {
         let pattern = entry_point.to_string() + "/**/" + pattern;
-        let glob = Glob::new(pattern.as_str())?.compile_matcher();
+        let glob = GlobBuilder::new(pattern.as_str())
+            .literal_separator(true)
+            .build()?
+            .compile_matcher();
 
         // Filter out hidden directories like ".git"
         let matcher = |entry: &DirEntry| {
@@ -213,7 +216,7 @@ mod tests {
     fn setup() -> Expander {
         Expander {
             config: Config {
-                match_with_dirs: false,
+                match_with_dirs: true,
                 match_with_files: true,
             },
             selector: |_, _| panic!("Oh god a choice!"),
@@ -264,5 +267,20 @@ mod tests {
             let expanded = exp.expand_arguments(&arguments).unwrap();
             assert_eq!(expanded.len(), 1);
         }
+    }
+
+    // Annoying bug that matches @dep* with @bla/bla/deps/bladfjdkfdf
+    // This is undesirable, because if I wanted to look in the deps folder for something, I'd do:
+    // @deps/* or @deps/**
+    #[test]
+    fn dont_match_with_parent_directory() {
+        let exp = setup();
+
+        let arguments = vec!["@deps*^a".to_string()];
+        let expanded = exp.expand_arguments(&arguments).unwrap();
+        // Bug cause it to match a whole bunch.
+        // Should only match two now, but w/e
+        assert!(expanded.len() < 4);
+        assert!(expanded.len() > 0);
     }
 }
