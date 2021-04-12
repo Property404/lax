@@ -76,6 +76,19 @@ fn fails_when_file_not_found() {
         .failure();
 }
 
+// Make sure the menu works and it's not printing to stdout
+// (printing to stdout would break things that depend on `-p`)
+#[test]
+fn menu_works_ok() {
+    setup_command()
+        .arg("-pf")
+        .arg("@foo*")
+        .write_stdin("1\n")
+        .assert()
+        .success()
+        .stdout("./tests/foobar/foo");
+}
+
 // Ensure the 'match with directories' functionality is working
 #[test]
 fn match_with_dirs() {
