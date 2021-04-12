@@ -49,14 +49,18 @@ fn main() {
     if ap.has("files") {
         config.match_with_dirs = false;
     }
+    if !config.match_with_dirs && !config.match_with_files {
+        eprintln!("The `-d` and `-f` flag can not be on at the same time. They are incompatible.");
+        process::exit(1);
+    }
 
     // After this, we only do '@' transformations
     let expander = lax::Expander {
         config,
         selector: |paths, display_menu| {
             if display_menu {
-                eprintln!("Found the following files");
-                eprintln!("=========================");
+                eprintln!("Found the following:");
+                eprintln!("====================");
                 for (i, path) in paths.iter().enumerate() {
                     eprintln!("{}. {}", i + 1, path);
                 }
@@ -92,7 +96,7 @@ fn main() {
 
         // Shouldn't return
         let err = exec::Command::new(program).args(args).exec();
-        eprintln!("Failed to execute binary '{}': {}", program, err);
+        eprintln!("Failed to execute '{}': {}", program, err);
         process::exit(1);
     }
 }
