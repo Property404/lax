@@ -1,5 +1,6 @@
 //! Transform command line arguments by expanding '@' patterns.
 #![warn(missing_docs)]
+use std::fs;
 use std::path::Path;
 
 use globset::GlobBuilder;
@@ -149,6 +150,8 @@ impl Expander {
         if paths.is_empty() {
             return Err(anyhow!("Could not match pattern: @{}", pattern.to_string()));
         }
+
+        // One match - no need to apply the selector
         if paths.len() == 1 {
             return Ok(vec![paths.remove(0)]);
         }
@@ -181,6 +184,32 @@ impl Expander {
         }
     }
 
+    /// Apply post-selector transformations
+    ///
+    /// # Returns
+    /// The transformed and expanded pattern
+    fn apply_post_transforms(&self, mut expanded_pattern: Vec<String>) -> Result<Vec<String>> {
+        // Transform files to directories
+        if self.config.transform_files_to_dirs {
+            let res: Result<Vec<String>> = expanded_pattern
+                .into_iter()
+                .map(|path| {
+                    if fs::metadata(&path)?.is_dir() {
+                        Ok(path)
+                    } else {
+                        if let Some(parent) = Path::new(&path).parent() {
+                            return Ok(parent.display().to_string());
+                        };
+                        Err(anyhow!("Could not get parent of file: {}", path))
+                    }
+                })
+                .collect();
+            expanded_pattern = res?;
+        };
+
+        Ok(expanded_pattern)
+    }
+
     /// Transform a list of arguments containing 0 or more '@' patterns.
     ///
     /// # Returns
@@ -189,7 +218,8 @@ impl Expander {
         let mut transformed_args: Vec<String> = Vec::new();
         for arg in args {
             if arg.starts_with('@') {
-                transformed_args.append(&mut self.expand_pattern(&arg)?);
+                let expanded_pattern = self.expand_pattern(&arg)?;
+                transformed_args.append(&mut self.apply_post_transforms(expanded_pattern)?);
             } else {
                 transformed_args.push(arg.to_string());
             }
@@ -205,6 +235,24 @@ pub struct Config {
     pub match_with_dirs: bool,
     /// Do '@' patterns match with files?
     pub match_with_files: bool,
+    /// Transform files into their parent directories after selector is applied
+    pub transform_files_to_dirs: bool,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Config::new()
+    }
+}
+impl Config {
+    /// Construct a default configuration.
+    pub fn new() -> Self {
+        Config {
+            match_with_dirs: true,
+            match_with_files: true,
+            transform_files_to_dirs: false,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -213,10 +261,7 @@ mod tests {
 
     fn setup() -> Expander {
         Expander {
-            config: Config {
-                match_with_dirs: true,
-                match_with_files: true,
-            },
+            config: Config::new(),
             selector: |_, _| panic!("Oh god a choice!"),
         }
     }
@@ -227,6 +272,16 @@ mod tests {
         let arguments = vec!["@foo".to_string()];
         let expanded = exp.expand_arguments(&arguments).unwrap();
         assert_eq!(expanded, vec!["./tests/foobar/foo"]);
+    }
+
+    #[test]
+    fn transform_file_to_parent() {
+        let mut exp = setup();
+        exp.config.transform_files_to_dirs = true;
+        let arguments = vec!["@src/*.rs^1".to_string()];
+        let expanded = exp.expand_arguments(&arguments).unwrap();
+        assert_eq!(expanded.len(), 1);
+        assert_eq!(expanded.get(0).unwrap(), "./src");
     }
 
     #[test]

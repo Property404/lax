@@ -28,6 +28,12 @@ fn main() {
             .set_description("Print transformed args to stdout, but don't execute")
             .set_long("--print-only")
             .set_short('p'),
+    )
+    .add_flag(
+        Flag::new("file_to_parent")
+            .set_description("Transform matched files to their parent directory")
+            .set_long("--file2parent")
+            .set_short('D'),
     );
 
     let args: Vec<String> = env::args().collect();
@@ -38,13 +44,13 @@ fn main() {
         process::exit(1);
     }
 
-    let mut config = lax::Config {
-        match_with_dirs: true,
-        match_with_files: true,
-    };
+    let mut config = lax::Config::new();
 
     if ap.has("directories") {
         config.match_with_files = false;
+    }
+    if ap.has("file_to_parent") {
+        config.transform_files_to_dirs = true;
     }
     if ap.has("files") {
         config.match_with_dirs = false;
