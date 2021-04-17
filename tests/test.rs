@@ -82,11 +82,11 @@ fn fails_when_file_not_found() {
 fn menu_works_ok() {
     setup_command()
         .arg("-pf")
-        .arg("@foo*")
+        .arg("@tests/**/foo*")
         .write_stdin("1\n")
         .assert()
         .success()
-        .stdout("./tests/foobar/foo");
+        .stdout("tests/foobar/foo");
 }
 
 // Ensure the 'match with directories' functionality is working
