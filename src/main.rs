@@ -82,7 +82,7 @@ fn main() {
     let args = match expander.expand_arguments(args) {
         Ok(args) => args,
         Err(err) => {
-            eprintln!("Error: {}", err);
+            eprintln!("lax: {}", err);
             process::exit(1)
         }
     };

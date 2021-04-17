@@ -5,8 +5,7 @@ use std::path::Path;
 use globset::GlobBuilder;
 use walkdir::{DirEntry, WalkDir};
 
-mod errors;
-pub use errors::{LaxError, LaxResult};
+use anyhow::{anyhow, Result};
 
 /// Struct used to expand '@' patterns.
 pub struct Expander {
@@ -32,7 +31,7 @@ impl Expander {
         entry_point: &str,
         pattern: &str,
         paths: &mut Vec<String>,
-    ) -> LaxResult {
+    ) -> Result<()> {
         let pattern = entry_point.to_string() + "/**/" + pattern;
         let glob = GlobBuilder::new(pattern.as_str())
             .literal_separator(true)
@@ -49,12 +48,12 @@ impl Expander {
         };
 
         if !Path::new(entry_point).exists() {
-            return Err(LaxError::EntityNotFound(format!("Entry point '{}' doesn't exist.\n\t\
+            return Err(anyhow!("Entry point '{}' doesn't exist.\n\t\
                                                Reminder: the \
                                                @pattern syntax is \
                                                @[ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR].\n\tMake sure \
                                                the bit before the first '/**/' is a valid \
-                                               directory", entry_point)));
+                                               directory", entry_point));
         }
 
         let walker = WalkDir::new(entry_point).into_iter();
@@ -120,16 +119,15 @@ impl Expander {
     //
     // Where [ENTRY_POINT/**/]GLOB_PATTERN expands into multiple paths, and a selector(possibly SELECTOR) is
     // used to narrow them down
-    fn expand_pattern(&self, pattern: &str) -> LaxResult<Vec<String>> {
+    fn expand_pattern(&self, pattern: &str) -> Result<Vec<String>> {
         // Git rid of '@' symbol
         let pattern = &pattern[1..];
 
         // extract selector if it exists
         let split: Vec<_> = pattern.split('^').collect();
         if split.len() > 2 {
-            return Err(LaxError::InvalidSelector(
+            return Err(anyhow!(
                 "More than one selector not allowed. Hint: '^' indicates the start of a selector"
-                    .to_string(),
             ));
         }
         let selector = split.get(1);
@@ -149,7 +147,7 @@ impl Expander {
         )?;
 
         if paths.is_empty() {
-            return Err(LaxError::EntityNotFound(pattern.to_string()));
+            return Err(anyhow!("Could not match pattern: @{}", pattern.to_string()));
         }
         if paths.len() == 1 {
             return Ok(vec![paths.remove(0)]);
@@ -164,7 +162,7 @@ impl Expander {
                 return Ok(selected_paths);
             }
 
-            Err(LaxError::InvalidSelector(selector))
+            Err(anyhow!("Invalid selector: ^{}", selector))
         } else {
             // No selector - given. Break into CLI or TUI menu
             let mut display_menu = true;
@@ -187,7 +185,7 @@ impl Expander {
     ///
     /// # Returns
     /// The transformed argument list.
-    pub fn expand_arguments(&self, args: &[String]) -> LaxResult<Vec<String>> {
+    pub fn expand_arguments(&self, args: &[String]) -> Result<Vec<String>> {
         let mut transformed_args: Vec<String> = Vec::new();
         for arg in args {
             if arg.starts_with('@') {
