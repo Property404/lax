@@ -97,4 +97,12 @@ cd(){
 
 The `-p` flag tells Lax to not execute anything, but simply transform arguments
 and print them to stdout. The `-d` flag tells it to only match with directories,
-as `cd` has no interest in files.
+as `cd` has no interest in files. You could also use the `-D` flag if you want
+to match files, but `cd` to their parent directory, instead.
+
+## Installing
+
+```bash
+git clone git@github.com/Property404/lax
+cargo install --path lax
+```
