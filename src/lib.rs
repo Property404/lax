@@ -74,7 +74,10 @@ impl Expander {
                                                directory", entry_point));
         }
 
-        env::set_current_dir(entry_point).unwrap();
+        // Go to the entry point
+        let cwd = env::current_dir()?;
+        env::set_current_dir(entry_point)?;
+
         let walker = WalkDir::new(".").into_iter();
         for e in walker.filter_entry(matcher).filter_map(|e| e.ok()) {
             let path = e.path();
@@ -100,6 +103,9 @@ impl Expander {
                 }
             }
         }
+
+        // Head back to our original directory
+        env::set_current_dir(cwd)?;
 
         Ok(())
     }
