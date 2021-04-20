@@ -1,5 +1,6 @@
 //! Transform command line arguments by expanding '@' patterns.
 #![warn(missing_docs)]
+use std::env;
 use std::fs;
 use std::path::Path;
 
@@ -30,10 +31,26 @@ impl Expander {
     fn fetch_matches(
         &self,
         entry_point: &str,
-        pattern: &str,
+        mut pattern: &str,
         paths: &mut Vec<String>,
     ) -> Result<()> {
-        let pattern = entry_point.to_string() + "/**/" + pattern;
+        // Match only with dirs if we end with '/'
+        let match_with_dirs = self.config.match_with_dirs;
+        let mut match_with_files = self.config.match_with_files;
+        if &pattern[pattern.len() - 1..] == "/" {
+            pattern = &pattern[0..pattern.len() - 1];
+            match_with_files = false;
+
+            if !match_with_dirs {
+                return Err(anyhow!(
+                    "Matching is configured to only match with \
+                                   files, yet glob pattern ends with '/', \
+                                   implying a search for directories"
+                ));
+            }
+        }
+
+        let pattern = "./**/".to_string() + pattern;
         let glob = GlobBuilder::new(pattern.as_str())
             .literal_separator(true)
             .build()?
@@ -57,24 +74,29 @@ impl Expander {
                                                directory", entry_point));
         }
 
-        let walker = WalkDir::new(entry_point).into_iter();
+        env::set_current_dir(entry_point).unwrap();
+        let walker = WalkDir::new(".").into_iter();
         for e in walker.filter_entry(matcher).filter_map(|e| e.ok()) {
             let path = e.path();
             if let Some(path_name) = path.to_str() {
                 if glob.is_match(path_name) {
                     // String comparison is a lot faster than fetching the metadata, so keep this
                     // in the inner if block
-                    let mut matched = self.config.match_with_dirs && self.config.match_with_files;
+                    let mut matched = match_with_dirs && match_with_files;
                     // Actually, we only need to fetch metadata if we're specifically looking
                     // for a file xor directory
                     if !matched {
-                        let metadata = e.metadata().unwrap();
-                        matched = (self.config.match_with_dirs && metadata.is_dir())
-                            || (self.config.match_with_files && metadata.is_file());
+                        let metadata = e.metadata()?;
+                        matched = (match_with_dirs && metadata.is_dir())
+                            || (match_with_files && metadata.is_file());
                     }
 
                     if matched {
-                        paths.push(path.display().to_string());
+                        paths.push(format!(
+                            "{}{}",
+                            entry_point,
+                            &path.display().to_string()[1..]
+                        ));
                     }
                 }
             }
@@ -112,43 +134,79 @@ impl Expander {
         (vec![], Some(vec![paths.remove(index - 1)]))
     }
 
-    // Expand an '@' pattern into all its matches, which are narrowed down by either the '@'
-    // pattern's selector, or a selector given from a CLI/TUI menu.
+    // Parse an @ pattern into its subcomponents
     //
     // '@' patterns are in the form:
     // @[ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR]
     //
     // Where [ENTRY_POINT/**/]GLOB_PATTERN expands into multiple paths, and a selector(possibly SELECTOR) is
     // used to narrow them down
-    fn expand_pattern(&self, pattern: &str) -> Result<Vec<String>> {
+    fn parse_pattern<'a>(&self, pattern: &'a str) -> Result<(&'a str, &'a str, Option<&'a str>)> {
         // Git rid of '@' symbol
         let pattern = &pattern[1..];
 
-        // extract selector if it exists
-        let split: Vec<_> = pattern.split('^').collect();
+        // Extract selector if it exists
+        let mut split: Vec<&str> = pattern.split('^').collect();
         if split.len() > 2 {
             return Err(anyhow!(
                 "More than one selector not allowed. Hint: '^' indicates the start of a selector"
             ));
         }
-        let selector = split.get(1);
-        let pattern = split.get(0).unwrap();
+        if split.is_empty() {
+            return Err(anyhow!("Cannot have an empty @ pattern"));
+        }
+        let pattern = split.remove(0);
+        let selector = if split.is_empty() {
+            None
+        } else {
+            Some(split.remove(0))
+        };
 
         // Extract entry_point and glob pattern
-        let split: Vec<_> = pattern.split("/**/").collect();
-        let entry_point = if split.len() < 2 { None } else { split.get(0) };
-        let glob_pattern = &split[if split.len() < 2 { 0 } else { 1 }..].join("/**/");
+        let delimiter = "/**/";
+        let delimiter_start = pattern.find(delimiter);
+
+        let entry_point;
+        let glob_pattern;
+
+        if let Some(delimiter_start) = delimiter_start {
+            let delimiter_end = delimiter_start + delimiter.len();
+
+            // Root is an expected default in this case, even if it's not very useful
+            entry_point = if delimiter_start == 0 {
+                "/"
+            } else {
+                &pattern[0..delimiter_start]
+            };
+
+            // If no glob pattern is given, we should match all directories, since we end with
+            // '/**/'
+            glob_pattern = if delimiter_end == pattern.len() {
+                "*/"
+            } else {
+                &pattern[delimiter_end..]
+            };
+        } else {
+            // Otherwise, just search in the current directory, which is appropriate for 99% of
+            // cases
+            entry_point = ".";
+            glob_pattern = pattern;
+        }
+
+        Ok((entry_point, glob_pattern, selector))
+    }
+
+    // Expand an '@' pattern into all its matches, which are narrowed down by either the '@'
+    // pattern's selector, or a selector given from a CLI/TUI menu.
+    fn expand_pattern(&self, pattern: &str) -> Result<Vec<String>> {
+        let (entry_point, glob_pattern, selector) = self.parse_pattern(pattern)?;
 
         // Get list of all matches
         let mut paths = Vec::new();
-        self.fetch_matches(
-            entry_point.unwrap_or(&"."),
-            glob_pattern.as_str(),
-            &mut paths,
-        )?;
+        self.fetch_matches(entry_point, glob_pattern, &mut paths)?;
 
         if paths.is_empty() {
-            return Err(anyhow!("Could not match pattern: @{}", pattern.to_string()));
+            return Err(anyhow!("Could not match pattern: {}", pattern));
         }
 
         // One match - no need to apply the selector
@@ -272,6 +330,45 @@ mod tests {
         let arguments = vec!["@foo".to_string()];
         let expanded = exp.expand_arguments(&arguments).unwrap();
         assert_eq!(expanded, vec!["./tests/foobar/foo"]);
+    }
+
+    #[test]
+    fn pattern_parsing() {
+        let exp = setup();
+
+        let res = exp.parse_pattern("@fish").unwrap();
+        assert_eq!(res, (".", "fish", None));
+
+        let res = exp.parse_pattern("@fish^tail").unwrap();
+        assert_eq!(res, (".", "fish", Some("tail")));
+
+        let res = exp.parse_pattern("@head/**/fish^tail").unwrap();
+        assert_eq!(res, ("head", "fish", Some("tail")));
+
+        let res = exp.parse_pattern("@/**/fish").unwrap();
+        assert_eq!(res, ("/", "fish", None));
+
+        let res = exp.parse_pattern("@//**/fish").unwrap();
+        assert_eq!(res, ("/", "fish", None));
+
+        let res = exp.parse_pattern("@./**/fish").unwrap();
+        assert_eq!(res, (".", "fish", None));
+
+        let res = exp.parse_pattern("@head/**/fish/**/tail").unwrap();
+        assert_eq!(res, ("head", "fish/**/tail", None));
+
+        let res = exp.parse_pattern("@head/**/").unwrap();
+        assert_eq!(res, ("head", "*/", None));
+    }
+
+    // '/' implies matching only directories
+    #[test]
+    fn imply_directory_matching() {
+        let exp = setup();
+        let arguments = vec!["@fo*/^a".to_string()];
+        let expanded = exp.expand_arguments(&arguments).unwrap();
+        assert_eq!(expanded.len(), 1);
+        assert_eq!(expanded.get(0).unwrap(), "./tests/foobar");
     }
 
     #[test]
