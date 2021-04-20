@@ -69,8 +69,8 @@ impl Expander {
             return Err(anyhow!("Entry point '{}' doesn't exist.\n\t\
                                                Reminder: the \
                                                @pattern syntax is \
-                                               @[ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR].\n\tMake sure \
-                                               the bit before the first '/**/' is a valid \
+                                               \"@[ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR]\".\n\tMake sure \
+                                               the bit before the first \"/**/\" is a valid \
                                                directory", entry_point));
         }
 
@@ -148,11 +148,19 @@ impl Expander {
         let mut split: Vec<&str> = pattern.split('^').collect();
         if split.len() > 2 {
             return Err(anyhow!(
-                "More than one selector not allowed. Hint: '^' indicates the start of a selector"
+                "More than one selector not allowed. \
+                Hint: '^' indicates the start of a selector"
             ));
         }
         if split.is_empty() {
-            return Err(anyhow!("Cannot have an empty @ pattern"));
+            // I -think- this is unreachable. `split` will still always be at leass one item, even
+            // if splitting an empty string
+            return Err(anyhow!(
+                "Unable to extract glob pattern. \
+                               This shouldn't happen. Did you do something \
+                               weird?\n\nIn any case, you should report this \
+                               as a bug."
+            ));
         }
         let pattern = split.remove(0);
         let selector = if split.is_empty() {
@@ -205,7 +213,7 @@ impl Expander {
         self.fetch_matches(entry_point, glob_pattern, &mut paths)?;
 
         if paths.is_empty() {
-            return Err(anyhow!("Could not match pattern: {}", pattern));
+            return Err(anyhow!("Could not match pattern: \"{}\"", pattern));
         }
 
         // One match - no need to apply the selector
@@ -222,7 +230,7 @@ impl Expander {
                 return Ok(selected_paths);
             }
 
-            Err(anyhow!("Invalid selector: ^{}", selector))
+            Err(anyhow!("Invalid selector: \"^{}\"", selector))
         } else {
             // No selector - given. Break into CLI or TUI menu
             let mut display_menu = true;
@@ -257,7 +265,7 @@ impl Expander {
                         if let Some(parent) = Path::new(&path).parent() {
                             return Ok(parent.display().to_string());
                         };
-                        Err(anyhow!("Could not get parent of file: {}", path))
+                        Err(anyhow!("Could not get parent of file: \"{}\"", path))
                     }
                 })
                 .collect();
