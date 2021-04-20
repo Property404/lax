@@ -80,8 +80,7 @@ impl Expander {
 
         let walker = WalkDir::new(".").into_iter();
         for e in walker.filter_entry(matcher).filter_map(|e| e.ok()) {
-            let path = e.path();
-            if let Some(path_name) = path.to_str() {
+            if let Some(path_name) = e.path().to_str() {
                 if glob.is_match(path_name) {
                     // String comparison is a lot faster than fetching the metadata, so keep this
                     // in the inner if block
@@ -95,7 +94,7 @@ impl Expander {
                         paths.push(format!(
                             "{}{}{}",
                             entry_point,
-                            &path.display().to_string()[1..],
+                            &path_name[1..],
                             // Let user know this is a directory
                             if metadata.is_dir() { "/" } else { "" }
                         ));
