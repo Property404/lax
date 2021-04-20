@@ -82,20 +82,19 @@ impl Expander {
                 if glob.is_match(path_name) {
                     // String comparison is a lot faster than fetching the metadata, so keep this
                     // in the inner if block
-                    let mut matched = match_with_dirs && match_with_files;
-                    // Actually, we only need to fetch metadata if we're specifically looking
-                    // for a file xor directory
-                    if !matched {
-                        let metadata = e.metadata()?;
-                        matched = (match_with_dirs && metadata.is_dir())
-                            || (match_with_files && metadata.is_file());
-                    }
+                    let metadata = e.metadata()?;
+
+                    let matched = (match_with_dirs && match_with_files)
+                        || (match_with_dirs && metadata.is_dir())
+                        || (match_with_files && metadata.is_file());
 
                     if matched {
                         paths.push(format!(
-                            "{}{}",
+                            "{}{}{}",
                             entry_point,
-                            &path.display().to_string()[1..]
+                            &path.display().to_string()[1..],
+                            // Let user know this is a directory
+                            if metadata.is_dir() { "/" } else { "" }
                         ));
                     }
                 }
@@ -368,7 +367,7 @@ mod tests {
         let arguments = vec!["@fo*/^a".to_string()];
         let expanded = exp.expand_arguments(&arguments).unwrap();
         assert_eq!(expanded.len(), 1);
-        assert_eq!(expanded.get(0).unwrap(), "./tests/foobar");
+        assert_eq!(expanded.get(0).unwrap(), "./tests/foobar/");
     }
 
     #[test]
