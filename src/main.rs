@@ -40,7 +40,8 @@ fn main() {
     let args = ap.process_arguments(&args);
 
     if args.is_empty() {
-        eprintln!("No arguments");
+        eprintln!("lax: No arguments");
+        eprintln!("For more information try --help");
         process::exit(1);
     }
 
