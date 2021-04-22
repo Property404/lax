@@ -34,6 +34,14 @@ impl Expander {
         mut pattern: &str,
         paths: &mut Vec<String>,
     ) -> Result<()> {
+        // Not a *super* helpful error message, but I'm unsure when this would come up
+        if pattern.is_empty() {
+            return Err(anyhow!(
+                "No glob pattern specified. \
+                               Please see Lax's README for syntax"
+            ));
+        }
+
         // Match only with dirs if we end with '/'
         let match_with_dirs = self.config.match_with_dirs;
         let mut match_with_files = self.config.match_with_files;
@@ -148,6 +156,9 @@ impl Expander {
     fn parse_pattern<'a>(&self, pattern: &'a str) -> Result<(&'a str, &'a str, Option<&'a str>)> {
         // Git rid of '@' symbol
         let pattern = &pattern[1..];
+        if pattern.is_empty() {
+            return Err(anyhow!("Nothing specified after '@' symbol"));
+        }
 
         // Extract selector if it exists
         let mut split: Vec<&str> = pattern.split('^').collect();
