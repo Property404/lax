@@ -106,3 +106,6 @@ to match files, but `cd` to their parent directory, instead.
 git clone git@github.com/Property404/lax
 cargo install --path lax
 ```
+
+## License
+MIT or Apache-2.0
