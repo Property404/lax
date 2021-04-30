@@ -1,5 +1,9 @@
 [package]
 name = "lax"
+description = "An command-line argument substitution utility "
+homepage = "https://github.com/Property404/lax"
+repository = "https://github.com/Property404/lax"
+license = "MIT OR Apache-2.0"
 version = "0.1.0"
 authors = ["Property404 <martinez.dagan@gmail.com>"]
 edition = "2018"
