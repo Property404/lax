@@ -64,8 +64,8 @@ fn main() {
     // After this, we only do '@' transformations
     let expander = lax::Expander {
         config,
-        selector: |paths, display_menu| {
-            if display_menu {
+        selector_menu: |paths, first_call| {
+            if first_call {
                 eprintln!("Found the following:");
                 eprintln!("====================");
                 for (i, path) in paths.iter().enumerate() {

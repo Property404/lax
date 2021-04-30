@@ -23,7 +23,7 @@ pub struct Expander {
     /// particular '@' pattern, and false otherwise. This can be used to provide the user with the
     /// list of matches on first call, but not on the following calls (eg the user enters an
     /// invalid selector)
-    pub selector: fn(&Vec<String>, bool) -> String,
+    pub selector_menu: fn(&Vec<String>, bool) -> String,
 }
 
 impl Expander {
@@ -249,10 +249,10 @@ impl Expander {
             Err(anyhow!("Invalid selector: \"^{}\"", selector))
         } else {
             // No selector - given. Break into CLI or TUI menu
-            let mut display_menu = true;
+            let mut first_call = true;
             loop {
-                let option = (self.selector)(&paths, display_menu);
-                display_menu = false;
+                let option = (self.selector_menu)(&paths, first_call);
+                first_call = false;
 
                 let (all_paths, selected_paths) = Self::parse_selector(paths, &option);
 
@@ -343,7 +343,7 @@ mod tests {
     fn setup() -> Expander {
         Expander {
             config: Config::new(),
-            selector: |_, _| panic!("Oh god a choice!"),
+            selector_menu: |_, _| panic!("Oh god a choice!"),
         }
     }
     #[test]
