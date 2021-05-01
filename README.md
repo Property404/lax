@@ -103,7 +103,7 @@ to match files, but `cd` to their parent directory, instead.
 ## Installing
 
 ```bash
-git clone git@github.com/Property404/lax
+git clone git@github.com:Property404/lax
 cargo install --path lax
 ```
 
