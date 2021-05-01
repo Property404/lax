@@ -82,6 +82,12 @@ fn main() {
             io::stdin()
                 .read_line(&mut option)
                 .expect("Failed to read from stdin");
+
+            // Allow user to quit
+            if option.starts_with('q') {
+                process::exit(1);
+            }
+
             option
         },
     };
