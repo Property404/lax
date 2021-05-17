@@ -66,6 +66,18 @@ fn mixed_args_check() {
         .stdout("./tests/foobar/foo foo ./tests/foobar/foo\n");
 }
 
+// Make sure we can escape the '@' sign
+// ('arobase' in French, as we lack a good English word)
+#[test]
+fn escape_arobase() {
+    setup_command()
+        .arg("echo")
+        .arg("\\@foo")
+        .assert()
+        .success()
+        .stdout("@foo\n");
+}
+
 // Lax will fail if it can't transform an '@' argument
 #[test]
 fn fails_when_file_not_found() {

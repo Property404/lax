@@ -302,7 +302,14 @@ impl Expander {
                 let expanded_pattern = self.expand_pattern(&arg)?;
                 transformed_args.append(&mut self.apply_post_transforms(expanded_pattern)?);
             } else {
-                transformed_args.push(arg.to_string());
+                let new_arg;
+                // Allow '@' to be escaped
+                if arg.starts_with("\\@") {
+                    new_arg = (&arg[1..]).to_string();
+                } else {
+                    new_arg = arg.to_string();
+                }
+                transformed_args.push(new_arg);
             }
         }
 
@@ -346,6 +353,7 @@ mod tests {
             selector_menu: |_, _| panic!("Oh god a choice!"),
         }
     }
+
     #[test]
     fn basic() {
         let exp = setup();

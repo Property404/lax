@@ -60,6 +60,31 @@ Now you know the full syntax for "@" patterns:
 
 Where `SEARCH_ENTRY_POINT` is a directory, `GLOB_PATTERN` is a glob pattern, and `SELECTOR` is `[1..n|'a']`
 
+## Miscellaneous Features
+```bash
+# Escape the initial '@' symbol
+lax echo \\@
+@
+lax echo '\@'
+@
+
+# Only match *directories* by adding a forward slash
+lax echo @foo/
+./foo/
+
+# You can also use command-line options to achieve a similar effect
+lax -d echo @foo
+./foo/
+
+# Or only look for files
+lax -f echo @foo
+./tests/foobar/foo
+
+# Or transform a file to its parent
+lax -fD echo @foo
+./tests/foobar
+```
+
 ## Primary Use Case  
 
 In your `.bashrc`, you can write `alias vim="lax vim"`  
