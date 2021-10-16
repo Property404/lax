@@ -1,6 +1,6 @@
 [package]
 name = "lax"
-description = "An command-line argument substitution utility "
+description = "A command-line argument substitution utility "
 homepage = "https://github.com/Property404/lax"
 repository = "https://github.com/Property404/lax"
 license = "MIT OR Apache-2.0"
