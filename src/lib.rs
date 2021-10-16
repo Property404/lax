@@ -122,6 +122,7 @@ impl Expander {
     // Selectors can be:
     // 0-N: Select path number #n
     // 'a': Select all paths
+    // 'l': Select last path
     fn parse_selector(
         mut paths: Vec<String>,
         selector: &str,
@@ -131,6 +132,11 @@ impl Expander {
         // Expand all
         if selector == "a" {
             return (vec![], Some(paths));
+        }
+
+        // Expand all
+        if selector == "l" {
+            return (vec![], Some(vec![paths.remove(paths.len() - 1)]));
         }
 
         let index: usize = match selector.parse() {
@@ -419,6 +425,15 @@ mod tests {
         let arguments = vec!["@*.rs^a".to_string()];
         let expanded = exp.expand_arguments(&arguments).unwrap();
         assert!(expanded.len() > 2);
+    }
+
+    #[test]
+    fn expand_with_last_selector() {
+        let exp = setup();
+
+        let arguments = vec!["@*.rs^l".to_string()];
+        let expanded = exp.expand_arguments(&arguments).unwrap();
+        assert_eq!(expanded.len(), 1);
     }
 
     #[test]
