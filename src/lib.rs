@@ -305,7 +305,7 @@ impl Expander {
         let mut transformed_args: Vec<String> = Vec::new();
         for arg in args {
             if arg.starts_with('@') {
-                let expanded_pattern = self.expand_pattern(&arg)?;
+                let expanded_pattern = self.expand_pattern(arg)?;
                 transformed_args.append(&mut self.apply_post_transforms(expanded_pattern)?);
             } else {
                 let new_arg;
