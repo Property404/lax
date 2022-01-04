@@ -6,7 +6,7 @@ repository = "https://github.com/Property404/lax"
 license = "MIT OR Apache-2.0"
 version = "0.2.0"
 authors = ["Property404 <martinez.dagan@gmail.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
