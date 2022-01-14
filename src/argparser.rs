@@ -161,7 +161,7 @@ impl ArgumentParser {
 
 impl Flag {
     /// Constructor.
-    pub fn new(name: &'static str) -> Self {
+    pub const fn new(name: &'static str) -> Self {
         Flag {
             name,
             long: None,
@@ -172,19 +172,19 @@ impl Flag {
     }
 
     /// Set the character used as the short name of this flag. E.g. 'c' for '-c'.
-    pub fn set_short(mut self, short: char) -> Self {
+    pub const fn set_short(mut self, short: char) -> Self {
         self.short = Some(short);
         self
     }
 
     /// Set the long name, e.g. "--long". Be sure to include the "--".
-    pub fn set_long(mut self, long: &'static str) -> Self {
+    pub const fn set_long(mut self, long: &'static str) -> Self {
         self.long = Some(long);
         self
     }
 
     /// Set the description to be used in the help/usage message.
-    pub fn set_description(mut self, description: &'static str) -> Self {
+    pub const fn set_description(mut self, description: &'static str) -> Self {
         self.description = Some(description);
         self
     }
@@ -216,7 +216,7 @@ impl Flag {
     }
 
     /// Returns true if this flag has been matched before.
-    pub fn has_match(&self) -> bool {
+    pub const fn has_match(&self) -> bool {
         self.has
     }
 

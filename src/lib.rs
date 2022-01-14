@@ -340,7 +340,7 @@ impl Default for Config {
 }
 impl Config {
     /// Construct a default configuration.
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Config {
             match_with_dirs: true,
             match_with_files: true,
