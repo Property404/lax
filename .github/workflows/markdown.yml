@@ -1,0 +1,16 @@
+---
+name: Markdown CI
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install MDL
+        run: sudo gem install mdl
+      - name: Lint README
+        run: mdl README.md
