@@ -1,6 +1,9 @@
-use std::env;
-use std::io::{self, Write};
-use std::process::{self};
+use std::{
+    env,
+    io::{self, Write},
+    os::unix::process::CommandExt,
+    process::{self, Command},
+};
 
 mod argparser;
 use argparser::{ArgumentParser, Flag};
@@ -108,7 +111,7 @@ fn main() {
         let args = &args[1..];
 
         // Shouldn't return
-        let err = exec::Command::new(program).args(args).exec();
+        let err = Command::new(program).args(args).exec();
         eprintln!("Failed to execute '{}': {}", program, err);
         process::exit(1);
     }
