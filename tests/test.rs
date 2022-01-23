@@ -17,6 +17,17 @@ fn fails_with_nonexistant_binary() {
         .failure();
 }
 
+// Check fallback binary.
+#[test]
+fn fallback_binary() {
+    setup_command()
+        .arg("bleblorp|echo|bloopblorp")
+        .arg("hello")
+        .assert()
+        .success()
+        .stdout("hello\n");
+}
+
 // Ensure argument parser is working correctly
 #[test]
 fn help_flag() {

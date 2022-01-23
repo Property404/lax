@@ -107,12 +107,22 @@ fn main() {
         print!("{}", args.join(" "));
     } else {
         // Go ahead and run the binary with the transformed arguments
-        let program = &args[0];
+        let programs = &args[0];
         let args = &args[1..];
 
-        // Shouldn't return
-        let err = Command::new(program).args(args).exec();
-        eprintln!("Failed to execute '{}': {}", program, err);
+        // Try multiple programs delimited with '|' in case one doesn't exist.
+        let mut err_message = None;
+        for program in programs.split('|') {
+            let err = Command::new(program).args(args).exec();
+            err_message = Some(format!("'{}': {}", program, err));
+        }
+
+        // exec() should not have returned
+        if let Some(err_message) = err_message {
+            eprintln!("lax: {}", err_message);
+        } else {
+            eprintln!("lax: No program run");
+        }
         process::exit(1);
     }
 }
