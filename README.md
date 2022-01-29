@@ -33,7 +33,8 @@ directory `./foo` for a file that matches `bar`. Any following `**` are handled
 normally:
 
 ```bash
-lax echo @foo/**/bar/**/baz
+$ lax echo @foo/**/bar/**/baz
+foo/bizz/bazz/bar/beez/baz
 ```
 
 Will look in directory `./foo` for a path that matches `bar/**/baz`. That is, any
@@ -49,47 +50,53 @@ If there are multiple files matching the given name, Lax will prompt you to choo
 However, you can also specify which file you'd want ahead of time:
 
 ```bash
-lax echo @*.rs^1 # Select the first match
-lax echo @*.rs^2 # Select the second match
-lax echo @*.rs^l # Select the last match
-lax echo @*.rs^a # Expand to all matches
+$ lax echo @*.rs^1 # Select the first match
+a.rs
+$ lax echo @*.rs^2 # Select the second match
+b.rs
+$ lax echo @*.rs^l # Select the last match
+d.rs
+$ lax echo @*.rs^1,3 # Select the first and third match
+a.rs c.rs
+$ lax echo @*.rs^a # Select all matches
+a.rs b.rs c.rs d.rs
 ```
 
 Now you know the full syntax for "@" patterns:
 
-`@[SEARCH_ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR]`
+`@[SEARCH_ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR[,SELECTOR]...]`
 
 Where `SEARCH_ENTRY_POINT` is a directory, `GLOB_PATTERN` is a glob pattern,
-and `SELECTOR` is `[1..n|'a']`
+and `SELECTOR` is `[1..n|'a'|'l']`
 
 ## Miscellaneous Features
 
 ```bash
 # Escape the initial '@' symbol
-lax echo \\@
+$ lax echo \\@
 @
-lax echo '\@'
+$ lax echo '\@'
 @
 
 # Only match *directories* by adding a forward slash
-lax echo @foo/
+$ lax echo @foo/
 ./foo/
 
 # You can also use command-line options to achieve a similar effect
-lax -d echo @foo
+$ lax -d echo @foo
 ./foo/
 
 # Or only look for files
-lax -f echo @foo
+$ lax -f echo @foo
 ./tests/foobar/foo
 
 # Or transform a file to its parent
-lax -fD echo @foo
+$ lax -fD echo @foo
 ./tests/foobar
 
 # We also have the ability to specify fallback binaries. This will use `cowsay`
 # if it's installed, otherwise it will fallback to `echo`
-lax 'cowsay|echo' hello
+$ lax 'cowsay|echo' hello
  _______
 < hello >
  -------
@@ -144,8 +151,10 @@ to match files, but `cd` to their parent directory, instead.
 ## Installing
 
 ```bash
-git clone git@github.com:Property404/lax
-cargo install --path lax
+$ git clone git@github.com:Property404/lax
+...
+$ cargo install --path lax
+...
 ```
 
 ## License

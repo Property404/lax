@@ -117,39 +117,41 @@ impl Expander {
         Ok(())
     }
 
-    // Apply selector to a list of paths.
+    // Apply selectors to a list of paths.
     //
     // Selectors can be:
     // 0-N: Select path number #n
     // 'a': Select all paths
     // 'l': Select last path
-    fn parse_selector(
-        mut paths: Vec<String>,
-        selector: &str,
-    ) -> (Vec<String>, Option<Vec<String>>) {
-        let selector = selector.trim();
+    //
+    // Multiple selectors are delimited by commas.
+    fn parse_selectors(paths: &[String], selectors: &str) -> Result<Vec<String>> {
+        let selectors = selectors.trim().split(',');
+        let mut selected_paths = vec![];
+        for selector in selectors {
+            // Expand all
+            if selector == "a" {
+                return Ok(paths.to_owned());
+            }
 
-        // Expand all
-        if selector == "a" {
-            return (vec![], Some(paths));
+            // Expand all
+            if selector == "l" {
+                selected_paths.push(paths[paths.len() - 1].clone());
+                continue;
+            }
+
+            let index: usize = selector
+                .parse()
+                .map_err(|_| anyhow!("Invalid selector: '{selector}'"))?;
+
+            // Selectors are 1-indexed
+            if index < 1 || index > paths.len() {
+                return Err(anyhow!("Selector index out of range: {index}"));
+            }
+
+            selected_paths.push(paths[index - 1].clone());
         }
-
-        // Expand all
-        if selector == "l" {
-            return (vec![], Some(vec![paths.remove(paths.len() - 1)]));
-        }
-
-        let index: usize = match selector.parse() {
-            Ok(num) => num,
-            Err(_) => return (paths, None),
-        };
-
-        // Selectors are 1-indexed
-        if index < 1 || index > paths.len() {
-            return (paths, None);
-        }
-
-        (vec![], Some(vec![paths.remove(index - 1)]))
+        Ok(selected_paths)
     }
 
     // Parse an @ pattern into its subcomponents
@@ -166,16 +168,16 @@ impl Expander {
             return Err(anyhow!("Nothing specified after '@' symbol"));
         }
 
-        // Extract selector if it exists
+        // Extract selectors if they exist
         let mut split: Vec<&str> = pattern.split('^').collect();
         if split.len() > 2 {
             return Err(anyhow!(
-                "More than one selector not allowed. \
-                Hint: '^' indicates the start of a selector"
+                "More than one selector group not allowed. \
+                Hint: '^' indicates the start of the selector group"
             ));
         }
         if split.is_empty() {
-            // I -think- this is unreachable. `split` will still always be at leass one item, even
+            // I -think- this is unreachable. `split` will still always be at least one item, even
             // if splitting an empty string
             return Err(anyhow!(
                 "Unable to extract glob pattern. \
@@ -185,7 +187,7 @@ impl Expander {
             ));
         }
         let pattern = split.remove(0);
-        let selector = if split.is_empty() {
+        let selectors = if split.is_empty() {
             None
         } else {
             Some(split.remove(0))
@@ -222,13 +224,13 @@ impl Expander {
             glob_pattern = pattern;
         }
 
-        Ok((entry_point, glob_pattern, selector))
+        Ok((entry_point, glob_pattern, selectors))
     }
 
     // Expand an '@' pattern into all its matches, which are narrowed down by either the '@'
-    // pattern's selector, or a selector given from a CLI/TUI menu.
+    // pattern's selectors, or selectors given from a CLI/TUI menu.
     fn expand_pattern(&self, pattern: &str) -> Result<Vec<String>> {
-        let (entry_point, glob_pattern, selector) = self.parse_pattern(pattern)?;
+        let (entry_point, glob_pattern, selectors) = self.parse_pattern(pattern)?;
 
         // Get list of all matches
         let mut paths = Vec::new();
@@ -244,15 +246,9 @@ impl Expander {
         }
 
         // Damn, more than one match
-        if let Some(selector) = selector {
-            let selector = selector.to_string();
-            let (_, selected_paths) = Self::parse_selector(paths, &selector);
-
-            if let Some(selected_paths) = selected_paths {
-                return Ok(selected_paths);
-            }
-
-            Err(anyhow!("Invalid selector: \"^{}\"", selector))
+        if let Some(selectors) = selectors {
+            let selectors = selectors.to_string();
+            Self::parse_selectors(&paths, &selectors)
         } else {
             // No selector - given. Break into CLI or TUI menu
             let mut first_call = true;
@@ -260,13 +256,11 @@ impl Expander {
                 let option = (self.selector_menu)(&paths, first_call);
                 first_call = false;
 
-                let (all_paths, selected_paths) = Self::parse_selector(paths, &option);
+                let selected_paths = Self::parse_selectors(&paths, &option);
 
-                if let Some(selected_paths) = selected_paths {
+                if let Ok(selected_paths) = selected_paths {
                     return Ok(selected_paths);
                 }
-
-                paths = all_paths;
             }
         }
     }
@@ -329,7 +323,7 @@ pub struct Config {
     pub match_with_dirs: bool,
     /// Do '@' patterns match with files?
     pub match_with_files: bool,
-    /// Transform files into their parent directories after selector is applied
+    /// Transform files into their parent directories after selectors are applied
     pub transform_files_to_dirs: bool,
 }
 
