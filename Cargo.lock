@@ -134,7 +134,7 @@ dependencies = [
 
 [[package]]
 name = "lax"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
