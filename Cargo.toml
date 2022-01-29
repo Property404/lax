@@ -4,7 +4,7 @@ description = "A command-line argument substitution utility "
 homepage = "https://github.com/Property404/lax"
 repository = "https://github.com/Property404/lax"
 license = "MIT OR Apache-2.0"
-version = "0.3.0"
+version = "0.4.0-dev"
 authors = ["Property404 <martinez.dagan@gmail.com>"]
 edition = "2021"
 
