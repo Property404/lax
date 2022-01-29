@@ -17,3 +17,6 @@ walkdir = "2.3.2"
 
 [dev-dependencies]
 assert_cmd = "2.0.4"
+
+[profile.release]
+lto = true
