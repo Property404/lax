@@ -73,6 +73,7 @@ impl Expander {
             !is_hidden
         };
 
+        let entry_point = &shellexpand::tilde(entry_point).into_owned();
         if !Path::new(entry_point).exists() {
             return Err(anyhow!("Entry point '{}' doesn't exist.\n\t\
                                                Reminder: the \

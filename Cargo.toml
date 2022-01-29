@@ -13,6 +13,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.52"
 globset = "0.4.8"
+shellexpand = "2.1.0"
 walkdir = "2.3.2"
 
 [dev-dependencies]
