@@ -65,12 +65,15 @@ impl Expander {
             .compile_matcher();
 
         // Filter out hidden directories like ".git"
-        let matcher = |entry: &DirEntry| {
-            let file_name = entry.file_name().to_str();
-            let is_hidden = file_name
-                .map(|s| s.starts_with('.') && s != "." && s != "..")
-                .unwrap_or(false);
-            !is_hidden
+        let matcher = match self.config.search_hidden {
+            true => |_: &DirEntry| true,
+            false => |entry: &DirEntry| {
+                let file_name = entry.file_name().to_str();
+                let is_hidden = file_name
+                    .map(|s| s.starts_with('.') && s != "." && s != "..")
+                    .unwrap_or(false);
+                !is_hidden
+            },
         };
 
         let entry_point = &shellexpand::tilde(entry_point).into_owned();
@@ -326,6 +329,8 @@ pub struct Config {
     pub match_with_files: bool,
     /// Transform files into their parent directories after selectors are applied
     pub transform_files_to_dirs: bool,
+    /// Should we search hidden files/directories?
+    pub search_hidden: bool,
 }
 
 impl Default for Config {
@@ -340,6 +345,7 @@ impl Config {
             match_with_dirs: true,
             match_with_files: true,
             transform_files_to_dirs: false,
+            search_hidden: false,
         }
     }
 }

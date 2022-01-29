@@ -12,6 +12,8 @@ BuildArgumentParser! {
     usage: "lax [FLAGS] BINARY [ARGS...]",
 
     flags: {
+        /// Search hidden files/directories
+        search_all:('a', "--all"),
         /// Only match directories
         directories:('d', "--directories"),
         /// Only match files
@@ -43,6 +45,7 @@ fn main() {
         transform_files_to_dirs: ap.file_to_parent,
         match_with_files: !ap.directories,
         match_with_dirs: !ap.files,
+        search_hidden: ap.search_all,
     };
 
     // After this, we only do '@' transformations
