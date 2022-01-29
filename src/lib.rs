@@ -165,7 +165,7 @@ impl Expander {
     //
     // Where [ENTRY_POINT/**/]GLOB_PATTERN expands into multiple paths, and a selector(possibly SELECTOR) is
     // used to narrow them down
-    fn parse_pattern<'a>(&self, pattern: &'a str) -> Result<(&'a str, &'a str, Option<&'a str>)> {
+    fn parse_pattern(pattern: &str) -> Result<(&str, &str, Option<&str>)> {
         // Git rid of '@' symbol
         let pattern = &pattern[1..];
         if pattern.is_empty() {
@@ -234,7 +234,7 @@ impl Expander {
     // Expand an '@' pattern into all its matches, which are narrowed down by either the '@'
     // pattern's selectors, or selectors given from a CLI/TUI menu.
     fn expand_pattern(&self, pattern: &str) -> Result<Vec<String>> {
-        let (entry_point, glob_pattern, selectors) = self.parse_pattern(pattern)?;
+        let (entry_point, glob_pattern, selectors) = Self::parse_pattern(pattern)?;
 
         // Get list of all matches
         let mut paths = Vec::new();
@@ -372,30 +372,28 @@ mod tests {
 
     #[test]
     fn pattern_parsing() {
-        let exp = setup();
-
-        let res = exp.parse_pattern("@fish").unwrap();
+        let res = Expander::parse_pattern("@fish").unwrap();
         assert_eq!(res, (".", "fish", None));
 
-        let res = exp.parse_pattern("@fish^tail").unwrap();
+        let res = Expander::parse_pattern("@fish^tail").unwrap();
         assert_eq!(res, (".", "fish", Some("tail")));
 
-        let res = exp.parse_pattern("@head/**/fish^tail").unwrap();
+        let res = Expander::parse_pattern("@head/**/fish^tail").unwrap();
         assert_eq!(res, ("head", "fish", Some("tail")));
 
-        let res = exp.parse_pattern("@/**/fish").unwrap();
+        let res = Expander::parse_pattern("@/**/fish").unwrap();
         assert_eq!(res, ("/", "fish", None));
 
-        let res = exp.parse_pattern("@//**/fish").unwrap();
+        let res = Expander::parse_pattern("@//**/fish").unwrap();
         assert_eq!(res, ("/", "fish", None));
 
-        let res = exp.parse_pattern("@./**/fish").unwrap();
+        let res = Expander::parse_pattern("@./**/fish").unwrap();
         assert_eq!(res, (".", "fish", None));
 
-        let res = exp.parse_pattern("@head/**/fish/**/tail").unwrap();
+        let res = Expander::parse_pattern("@head/**/fish/**/tail").unwrap();
         assert_eq!(res, ("head", "fish/**/tail", None));
 
-        let res = exp.parse_pattern("@head/**/").unwrap();
+        let res = Expander::parse_pattern("@head/**/").unwrap();
         assert_eq!(res, ("head", "*/", None));
     }
 
