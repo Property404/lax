@@ -98,8 +98,7 @@ impl Expander {
                     // in the inner if block
                     let metadata = e.metadata()?;
 
-                    let matched = (match_with_dirs && match_with_files)
-                        || (match_with_dirs && metadata.is_dir())
+                    let matched = (match_with_dirs && (match_with_files || metadata.is_dir()))
                         || (match_with_files && metadata.is_file());
 
                     if matched {
@@ -306,13 +305,12 @@ impl Expander {
                 let expanded_pattern = self.expand_pattern(arg)?;
                 transformed_args.append(&mut self.apply_post_transforms(expanded_pattern)?);
             } else {
-                let new_arg;
                 // Allow '@' to be escaped
-                if arg.starts_with("\\@") {
-                    new_arg = (&arg[1..]).to_string();
+                let new_arg = if arg.starts_with("\\@") {
+                    (&arg[1..]).to_string()
                 } else {
-                    new_arg = arg.to_string();
-                }
+                    arg.to_string()
+                };
                 transformed_args.push(new_arg);
             }
         }
