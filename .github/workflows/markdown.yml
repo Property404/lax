@@ -14,4 +14,4 @@ jobs:
       - name: Install MDL
         run: sudo gem install mdl
       - name: Lint README
-        run: mdl README.md
+        run: mdl -- $(find . -name '*.md')
