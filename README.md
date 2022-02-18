@@ -54,8 +54,10 @@ $ lax echo @*.rs^1 # Select the first match
 a.rs
 $ lax echo @*.rs^2 # Select the second match
 b.rs
-$ lax echo @*.rs^l # Select the last match
+$ lax echo @*.rs^l # Select the last match. You can also use '-1'
 d.rs
+$ lax echo @*.rs^-2 # Select the second to last match
+c.rs
 $ lax echo @*.rs^1,3 # Select the first and third match
 a.rs c.rs
 $ lax echo @*.rs^a # Select all matches
@@ -67,7 +69,7 @@ Now you know the full syntax for "@" patterns:
 `@[SEARCH_ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR[,SELECTOR]...]`
 
 Where `SEARCH_ENTRY_POINT` is a directory, `GLOB_PATTERN` is a glob pattern,
-and `SELECTOR` is `[1..n|'a'|'l']`
+and `SELECTOR` is `[-n..-1|1..n|'a'|'l']`
 
 ## Miscellaneous Features
 
