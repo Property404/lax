@@ -1,6 +1,5 @@
 use std::{
-    env,
-    io::{self, Write},
+    env, io,
     os::unix::process::CommandExt,
     process::{self, Command},
 };
@@ -59,12 +58,8 @@ fn main() {
                     eprintln!("{}. {}", i + 1, path);
                 }
             }
-
             eprint!("Select> ");
-            match io::stdout().flush() {
-                Ok(_) => (),
-                Err(error) => eprintln!("Error: {}", error),
-            };
+
             let mut option = String::new();
             io::stdin()
                 .read_line(&mut option)
