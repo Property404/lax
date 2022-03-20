@@ -23,7 +23,7 @@ pub struct Expander {
     /// particular '@' pattern, and false otherwise. This can be used to provide the user with the
     /// list of matches on first call, but not on the following calls (eg the user enters an
     /// invalid selector)
-    pub selector_menu: fn(&Vec<String>, bool) -> String,
+    pub selector_menu: fn(paths: &[String], first_call: bool) -> String,
 }
 
 #[derive(PartialEq, Debug)]
