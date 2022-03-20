@@ -100,7 +100,7 @@ fn main() {
         if let Some(err_message) = err_message {
             eprintln!("lax: {}", err_message);
         } else {
-            eprintln!("lax: No program run");
+            eprintln!("lax: No program ran");
         }
         process::exit(1);
     }
