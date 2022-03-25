@@ -249,66 +249,38 @@ impl Expander {
     // group(possibly SELECTOR_GROUP) is used to narrow them down
     fn parse_pattern(pattern: &str) -> Result<(&str, &str, Option<&str>)> {
         // Git rid of '@' symbol
-        let pattern = &pattern[1..];
-        if pattern.is_empty() {
-            return Err(anyhow!("Nothing specified after '@' symbol"));
-        }
+        let pattern = &mut pattern[1..].split('^');
 
-        // Extract selectors if they exist
-        let mut split: Vec<&str> = pattern.split('^').collect();
-        if split.len() > 2 {
-            return Err(anyhow!(
-                "More than one selector group not allowed. \
-                Hint: '^' indicates the start of the selector group"
-            ));
-        }
-        if split.is_empty() {
-            // I -think- this is unreachable. `split` will still always be at least one item, even
-            // if splitting an empty string
-            return Err(anyhow!(
-                "Unable to extract glob pattern. \
-                               This shouldn't happen. Did you do something \
-                               weird?\n\nIn any case, you should report this \
-                               as a bug."
-            ));
-        }
-        let pattern = split.remove(0);
-        let selectors = if split.is_empty() {
-            None
-        } else {
-            Some(split.remove(0))
-        };
+        let (pattern, selectors) = (
+            pattern
+                .next()
+                .ok_or_else(|| anyhow!("Nothing specified after '@' symbol"))?,
+            pattern.next(),
+        );
 
         // Extract entry_point and glob pattern
-        let delimiter = "/**/";
-        let delimiter_start = pattern.find(delimiter);
+        let mut pattern = pattern.splitn(2, "/**/");
 
-        let entry_point;
-        let glob_pattern;
-
-        if let Some(delimiter_start) = delimiter_start {
-            let delimiter_end = delimiter_start + delimiter.len();
-
-            // Root is an expected default in this case, even if it's not very useful
-            entry_point = if delimiter_start == 0 {
-                "/"
-            } else {
-                &pattern[0..delimiter_start]
-            };
-
-            // If no glob pattern is given, we should match all directories, since we end with
-            // '/**/'
-            glob_pattern = if delimiter_end == pattern.len() {
-                "*/"
-            } else {
-                &pattern[delimiter_end..]
-            };
-        } else {
-            // Otherwise, just search in the current directory, which is appropriate for 99% of
-            // cases
-            entry_point = ".";
-            glob_pattern = pattern;
-        }
+        let (entry_point, glob_pattern) = match (pattern.next(), pattern.next()) {
+            (Some(glob_pattern), None) => (".", glob_pattern),
+            (Some(entry_point), Some(glob_pattern)) => (
+                // Root is an expected default in this case, even if it's not very useful
+                if entry_point.is_empty() {
+                    "/"
+                } else {
+                    entry_point
+                },
+                // If no glob pattern is given, we should match all directories, since we end with
+                // '/**/'
+                if glob_pattern.is_empty() {
+                    "*/"
+                } else {
+                    glob_pattern
+                },
+            ),
+            // .splitn(2,_) will produce at least one value, even on an empty string
+            (None, _) => unreachable!(),
+        };
 
         Ok((entry_point, glob_pattern, selectors))
     }
