@@ -299,7 +299,6 @@ impl Expander {
             return Err(anyhow!("Could not match pattern: \"{}\"", pattern));
         }
 
-        // Damn, more than one match
         if let Some(selector_group) = selector_group {
             selector_group.select(&paths)
         } else {
