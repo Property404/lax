@@ -1,13 +1,10 @@
 //! Transform command line arguments by expanding '@' patterns.
 #![warn(missing_docs)]
-use std::env;
-use std::fs;
-use std::path::Path;
-
-use globset::GlobBuilder;
-use walkdir::{DirEntry, WalkDir};
+use std::{env, fs, path::Path};
 
 use anyhow::{anyhow, Result};
+use globset::GlobBuilder;
+use walkdir::{DirEntry, WalkDir};
 
 /// Struct used to expand '@' patterns.
 pub struct Expander {
