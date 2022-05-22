@@ -310,11 +310,14 @@ impl Expander {
                 let option = (self.selector_menu)(&paths, first_call);
                 first_call = false;
 
-                let selected_paths = Self::parse_selectors(&option)?.select(&paths);
+                let selected_paths = Self::parse_selectors(&option).and_then(|x| x.select(&paths));
 
-                if let Ok(selected_paths) = selected_paths {
-                    return Ok(selected_paths);
-                }
+                match selected_paths {
+                    Ok(selected_paths) => {
+                        return Ok(selected_paths);
+                    }
+                    Err(err) => eprintln!("{err}"),
+                };
             }
         }
     }

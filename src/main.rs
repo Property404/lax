@@ -1,5 +1,5 @@
 use std::{
-    env, io,
+    env,
     os::unix::process::CommandExt,
     process::{self, Command},
 };
@@ -60,17 +60,29 @@ fn main() {
             }
             eprint!("Select> ");
 
-            let mut option = String::new();
-            io::stdin()
-                .read_line(&mut option)
-                .expect("Failed to read from stdin");
-
-            // Allow user to quit
-            if option.starts_with('q') {
-                process::exit(1);
+            let mut rl = rustyline::Editor::<()>::new();
+            loop {
+                let readline = rl.readline(">> ");
+                match readline {
+                    Ok(option) => {
+                        if option.is_empty() {
+                            continue;
+                        }
+                        // Allow user to quit
+                        if option.starts_with('q') {
+                            process::exit(1);
+                        }
+                        return option;
+                    }
+                    Err(rustyline::error::ReadlineError::Interrupted) => {
+                        process::exit(1);
+                    }
+                    Err(err) => {
+                        eprintln!("{err}");
+                        continue;
+                    }
+                }
             }
-
-            option
         },
     };
 
