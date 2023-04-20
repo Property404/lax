@@ -540,6 +540,6 @@ mod tests {
         // Bug cause it to match a whole bunch.
         // Should only match two now, but w/e
         assert!(expanded.len() < 4);
-        assert!(expanded.len() > 0);
+        assert!(!expanded.is_empty());
     }
 }

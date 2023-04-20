@@ -1,5 +1,3 @@
-use assert_cmd;
-
 fn setup_command() -> assert_cmd::cmd::Command {
     assert_cmd::Command::cargo_bin("lax").unwrap()
 }
