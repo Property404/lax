@@ -4,6 +4,7 @@ use std::{env, fs, path::Path};
 
 use anyhow::{anyhow, Result};
 use globset::GlobBuilder;
+use regex::Regex;
 use walkdir::{DirEntry, WalkDir};
 
 /// Struct used to expand '@' patterns.
@@ -28,6 +29,7 @@ enum Selector {
     All,
     FromFront(usize),
     FromBack(usize),
+    Regex(String),
 }
 #[derive(PartialEq, Debug)]
 struct SelectorGroup {
@@ -58,6 +60,10 @@ impl SelectorGroup {
                     }
                     selected_paths.push(paths[paths.len() - 1 - offset].clone());
                 }
+                Selector::Regex(regex) => {
+                    let regex = Regex::new(regex)?;
+                    selected_paths.extend(paths.iter().filter(|v| regex.is_match(v)).cloned());
+                }
             }
         }
 
@@ -73,10 +79,7 @@ impl SelectorGroup {
                 Selector::FromFront(offset) => {
                     highest_index = std::cmp::max(*offset, highest_index);
                 }
-                Selector::FromBack(_) => {
-                    return None;
-                }
-                Selector::All => {
+                Selector::FromBack(_) | Selector::All | Selector::Regex(_) => {
                     return None;
                 }
             }
@@ -210,6 +213,11 @@ impl Expander {
         for selector in raw_selectors.trim().split(',') {
             if selector == "a" {
                 selectors.push(Selector::All);
+                continue;
+            }
+
+            if let Some(selector) = selector.strip_prefix('/') {
+                selectors.push(Selector::Regex(selector.into()));
                 continue;
             }
 
@@ -506,6 +514,15 @@ mod tests {
         let arguments = vec!["@*.rs^1".to_string()];
         let expanded = exp.expand_arguments(&arguments).unwrap();
         assert_eq!(expanded.len(), 1);
+    }
+
+    #[test]
+    fn search() {
+        let exp = setup();
+
+        let arguments = vec!["@*.rs^/nothingmatchesthis".to_string()];
+        let expanded = exp.expand_arguments(&arguments).unwrap();
+        assert_eq!(expanded.len(), 0);
     }
 
     #[test]

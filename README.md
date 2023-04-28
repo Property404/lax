@@ -62,6 +62,8 @@ $ lax echo @*.rs^1,3 # Select the first and third match
 a.rs c.rs
 $ lax echo @*.rs^a # Select all matches
 a.rs b.rs c.rs d.rs
+$ lax echo @*.rs^/[ab] # Select with regex
+a.rs b.rs
 ```
 
 Now you know the full syntax for "@" patterns:
