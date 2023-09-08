@@ -19,6 +19,8 @@ BuildArgumentParser! {
         files: ('f', "--files"),
         /// Print transformed args to stdout, but don't execute
         print_only: ('p', "--print-only"),
+        /// Print each arg on a new line, but don't execute
+        print_lines: ('P', "--print-lines"),
         /// Transform matched files to their parent directory
         file_to_parent: ('D', "--file2parent")
     }
@@ -82,7 +84,9 @@ fn main() {
         }
     };
 
-    if ap.print_only {
+    if ap.print_lines {
+        println!("{}", args.join("\n"));
+    } else if ap.print_only {
         print!("{}", args.join(" "));
     } else {
         // Go ahead and run the binary with the transformed arguments
