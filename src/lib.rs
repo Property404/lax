@@ -392,12 +392,6 @@ pub struct Config {
 
 impl Default for Config {
     fn default() -> Self {
-        Config::new()
-    }
-}
-impl Config {
-    /// Construct a default configuration.
-    pub const fn new() -> Self {
         Config {
             match_with_dirs: true,
             match_with_files: true,
@@ -413,7 +407,7 @@ mod tests {
 
     fn setup() -> Expander {
         Expander {
-            config: Config::new(),
+            config: Config::default(),
             selector_menu: |_, _| panic!("Oh god a choice!"),
         }
     }
