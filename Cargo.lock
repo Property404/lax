@@ -150,7 +150,7 @@ dependencies = [
 
 [[package]]
 name = "lax"
-version = "0.4.3"
+version = "0.4.4-dev-feat-git-root"
 dependencies = [
  "anyhow",
  "assert_cmd",

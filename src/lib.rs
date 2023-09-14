@@ -1,8 +1,11 @@
 //! Transform command line arguments by expanding '@' patterns.
 #![warn(missing_docs)]
-use std::{env, fs, path::Path};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use globset::GlobBuilder;
 use regex::Regex;
 use walkdir::{DirEntry, WalkDir};
@@ -92,6 +95,7 @@ impl Expander {
     /// Expand a entry point/glob pattern pair into all its potential matches.
     fn fetch_matches(
         &self,
+        from_git_root: bool,
         entry_point: &str,
         mut pattern: &str,
         paths: &mut Vec<String>,
@@ -139,19 +143,41 @@ impl Expander {
             },
         };
 
-        let entry_point = &shellexpand::tilde(entry_point).into_owned();
-        if !Path::new(entry_point).exists() {
-            return Err(anyhow!("Entry point '{}' doesn't exist.\n\t\
+        let entry_point = shellexpand::tilde(entry_point);
+        let entry_point = entry_point.as_ref();
+
+        // Possibly need to find the git root
+        let entry_point = if from_git_root {
+            let mut cwd = env::current_dir()?;
+            while !cwd.join(".git").exists() {
+                cwd = match cwd.parent() {
+                    Some(parent) => parent.into(),
+                    None => {
+                        return Err(anyhow!("Cannot get git root - this is not a git repo"));
+                    }
+                }
+            }
+            if entry_point != "." {
+                cwd.join(entry_point)
+            } else {
+                cwd
+            }
+        } else {
+            PathBuf::from(entry_point)
+        };
+
+        if !entry_point.exists() {
+            return Err(anyhow!("Entry point {:?} doesn't exist.\n\t\
                                                Reminder: the \
                                                @pattern syntax is \
-                                               \"@[ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR]\".\n\tMake sure \
+                                               \"@[%][ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR]\".\n\tMake sure \
                                                the bit before the first \"/**/\" is a valid \
                                                directory", entry_point));
         }
 
         // Go to the entry point
         let cwd = env::current_dir()?;
-        env::set_current_dir(entry_point)?;
+        env::set_current_dir(&entry_point)?;
 
         // We have an opportunity to quit early in some cases when selectors are provided.
         let quit_after_index = match selector_group {
@@ -172,13 +198,15 @@ impl Expander {
                         || (match_with_files && metadata.is_file());
 
                     if matched {
-                        paths.push(format!(
-                            "{}{}{}",
-                            entry_point,
-                            &path_name[1..],
-                            // Let user know this is a directory
-                            if metadata.is_dir() { "/" } else { "" }
-                        ));
+                        let path_name = match path_name.strip_prefix("./") {
+                            Some(path_name) => path_name,
+                            None => path_name,
+                        };
+                        let mut result = entry_point.join(path_name).to_string_lossy().to_string();
+                        if metadata.is_dir() {
+                            result.push('/')
+                        }
+                        paths.push(result);
 
                         if let Some(quit_after_index) = quit_after_index {
                             if quit_after_index == current_index {
@@ -252,14 +280,31 @@ impl Expander {
     //
     // Where [ENTRY_POINT/**/]GLOB_PATTERN expands into multiple paths, and a selector
     // group(possibly SELECTOR_GROUP) is used to narrow them down
-    fn parse_pattern(pattern: &str) -> Result<(&str, &str, Option<&str>)> {
+    fn parse_pattern(pattern: &str) -> Result<(bool, &str, &str, Option<&str>)> {
         // Git rid of '@' symbol
-        let pattern = &mut pattern[1..].split('^');
+        let pattern = &pattern[1..];
+
+        if pattern.is_empty() {
+            bail!("Empty pattern - nothing specified after '@' symbol");
+        }
+
+        // The "from git root" modifier. This enables us to start the search from the git root.
+        let (pattern, git_root) = if let Some(pattern) = pattern.strip_prefix('%') {
+            (pattern, true)
+        // Faux "escape modifier" modifier, so we can escape what would otherwise be considered a
+        // modifier
+        } else if let Some(pattern) = pattern.strip_prefix('\\') {
+            (pattern, false)
+        } else {
+            (pattern, false)
+        };
+
+        let pattern = &mut pattern.split('^');
 
         let (pattern, selectors) = (
             pattern
                 .next()
-                .ok_or_else(|| anyhow!("Nothing specified after '@' symbol"))?,
+                .ok_or_else(|| anyhow!("Empty patterns are not allowed"))?,
             pattern.next(),
         );
 
@@ -287,21 +332,27 @@ impl Expander {
             (None, _) => unreachable!(),
         };
 
-        Ok((entry_point, glob_pattern, selectors))
+        Ok((git_root, entry_point, glob_pattern, selectors))
     }
 
     // Expand an '@' pattern into all its matches, which are narrowed down by either the '@'
     // pattern's selectors, or selectors given from a CLI/TUI menu.
     fn expand_pattern(&self, pattern: &str) -> Result<Vec<String>> {
-        let (entry_point, glob_pattern, selector_group) = Self::parse_pattern(pattern)?;
+        let (git_root, entry_point, glob_pattern, selector_group) = Self::parse_pattern(pattern)?;
         let selector_group = selector_group.map(Self::parse_selectors).transpose()?;
 
         // Get list of all matches
         let mut paths = Vec::new();
-        self.fetch_matches(entry_point, glob_pattern, &mut paths, &selector_group)?;
+        self.fetch_matches(
+            git_root,
+            entry_point,
+            glob_pattern,
+            &mut paths,
+            &selector_group,
+        )?;
 
         if paths.is_empty() {
-            return Err(anyhow!("Could not match pattern: \"{}\"", pattern));
+            return Err(anyhow!("Could not match pattern: \"{}\"", glob_pattern));
         }
 
         if let Some(selector_group) = selector_group {
@@ -439,28 +490,28 @@ mod tests {
     #[test]
     fn pattern_parsing() {
         let res = Expander::parse_pattern("@fish").unwrap();
-        assert_eq!(res, (".", "fish", None));
+        assert_eq!(res, (false, ".", "fish", None));
 
         let res = Expander::parse_pattern("@fish^tail").unwrap();
-        assert_eq!(res, (".", "fish", Some("tail")));
+        assert_eq!(res, (false, ".", "fish", Some("tail")));
 
-        let res = Expander::parse_pattern("@head/**/fish^tail").unwrap();
-        assert_eq!(res, ("head", "fish", Some("tail")));
+        let res = Expander::parse_pattern("@%head/**/fish^tail").unwrap();
+        assert_eq!(res, (true, "head", "fish", Some("tail")));
 
         let res = Expander::parse_pattern("@/**/fish").unwrap();
-        assert_eq!(res, ("/", "fish", None));
+        assert_eq!(res, (false, "/", "fish", None));
 
         let res = Expander::parse_pattern("@//**/fish").unwrap();
-        assert_eq!(res, ("/", "fish", None));
+        assert_eq!(res, (false, "/", "fish", None));
 
         let res = Expander::parse_pattern("@./**/fish").unwrap();
-        assert_eq!(res, (".", "fish", None));
+        assert_eq!(res, (false, ".", "fish", None));
 
         let res = Expander::parse_pattern("@head/**/fish/**/tail").unwrap();
-        assert_eq!(res, ("head", "fish/**/tail", None));
+        assert_eq!(res, (false, "head", "fish/**/tail", None));
 
         let res = Expander::parse_pattern("@head/**/").unwrap();
-        assert_eq!(res, ("head", "*/", None));
+        assert_eq!(res, (false, "head", "*/", None));
     }
 
     // '/' implies matching only directories
