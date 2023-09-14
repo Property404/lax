@@ -44,6 +44,12 @@ Making use of the search entry point can speed up searches if you know which top
 subdirectory your query is in, but you don't want to `cd` into it for whatever
 reason. It can also be used to specify a path outside your directory.
 
+## Using in Git Repositories
+
+You can search from the git root by using a `%`:
+
+`lax vim @%README.md`
+
 ## Selectors
 
 If there are multiple files matching the given name, Lax will prompt you to choose.
@@ -68,10 +74,10 @@ a.rs b.rs
 
 Now you know the full syntax for "@" patterns:
 
-`@[SEARCH_ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR[,SELECTOR]...]`
+`@[%][SEARCH_ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR[,SELECTOR]...]`
 
 Where `SEARCH_ENTRY_POINT` is a directory, `GLOB_PATTERN` is a glob pattern,
-and `SELECTOR` is `[-n..-1|1..n|'a'|'l']`
+and `SELECTOR` is `[-n..-1|1..n|'a'|'l'|/regex]`
 
 ## Miscellaneous Features
 
