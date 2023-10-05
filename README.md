@@ -161,10 +161,13 @@ to match files, but `cd` to their parent directory, instead.
 ## Installing
 
 ```bash
-$ git clone git@github.com:Property404/lax
-...
-$ cargo install --path lax
-...
+cargo install --git https://github.com/Property404/lax
+```
+
+or for a more optimized build:
+
+```bash
+cargo install --git https://github.com/Property404/lax --profile lto
 ```
 
 ## License
