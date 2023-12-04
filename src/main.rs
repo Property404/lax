@@ -7,7 +7,7 @@ mod argparser;
 
 BuildArgumentParser! {
     name: "lax",
-    description: "Argument substition utility",
+    description: "Argument substitution utility",
     usage: "lax [FLAGS] BINARY [ARGS...]",
 
     flags: {
