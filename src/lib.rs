@@ -521,7 +521,7 @@ mod tests {
         let arguments = vec!["@fo*/^a".to_string()];
         let expanded = exp.expand_arguments(&arguments).unwrap();
         assert_eq!(expanded.len(), 1);
-        assert_eq!(expanded.get(0).unwrap(), "./tests/foobar/");
+        assert_eq!(expanded.first().unwrap(), "./tests/foobar/");
     }
 
     #[test]
@@ -531,7 +531,7 @@ mod tests {
         let arguments = vec!["@src/*.rs^1".to_string()];
         let expanded = exp.expand_arguments(&arguments).unwrap();
         assert_eq!(expanded.len(), 1);
-        assert_eq!(expanded.get(0).unwrap(), "./src");
+        assert_eq!(expanded.first().unwrap(), "./src");
     }
 
     #[test]
