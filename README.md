@@ -44,9 +44,9 @@ Making use of the search entry point can speed up searches if you know which top
 subdirectory your query is in, but you don't want to `cd` into it for whatever
 reason. It can also be used to specify a path outside your directory.
 
-## Using in Git Repositories
+## Using in Git/Subversion Repositories
 
-You can search from the git root by using a `%`:
+You can search from the git(or svn) root by using a `%`:
 
 `lax vim @%README.md`
 

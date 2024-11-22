@@ -95,7 +95,7 @@ impl Expander {
     /// Expand a entry point/glob pattern pair into all its potential matches.
     fn fetch_matches(
         &self,
-        from_git_root: bool,
+        from_repository_root: bool,
         entry_point: &str,
         mut pattern: &str,
         paths: &mut Vec<String>,
@@ -131,7 +131,7 @@ impl Expander {
             .build()?
             .compile_matcher();
 
-        // Filter out hidden directories like ".git"
+        // Filter out hidden directories like ".git"/".svn"
         let matcher = match self.config.search_hidden {
             true => |_: &DirEntry| true,
             false => |entry: &DirEntry| {
@@ -146,14 +146,16 @@ impl Expander {
         let entry_point = shellexpand::tilde(entry_point);
         let entry_point = entry_point.as_ref();
 
-        // Possibly need to find the git root
-        let entry_point = if from_git_root {
+        // Possibly need to find the git/svn root
+        let entry_point = if from_repository_root {
             let mut cwd = env::current_dir()?;
-            while !cwd.join(".git").exists() {
+            while !cwd.join(".git").exists() && !cwd.join(".svn").exists() {
                 cwd = match cwd.parent() {
                     Some(parent) => parent.into(),
                     None => {
-                        return Err(anyhow!("Cannot get git root - this is not a git repo"));
+                        return Err(anyhow!(
+                            "Cannot get repository root - this is not a git/svnc repo"
+                        ));
                     }
                 }
             }
@@ -288,8 +290,8 @@ impl Expander {
             bail!("Empty pattern - nothing specified after '@' symbol");
         }
 
-        // The "from git root" modifier. This enables us to start the search from the git root.
-        let (pattern, git_root) = if let Some(pattern) = pattern.strip_prefix('%') {
+        // The "from repository root" modifier. This enables us to start the search from the git/svn root.
+        let (pattern, repository_root) = if let Some(pattern) = pattern.strip_prefix('%') {
             (pattern, true)
         // Faux "escape modifier" modifier, so we can escape what would otherwise be considered a
         // modifier
@@ -332,19 +334,20 @@ impl Expander {
             (None, _) => unreachable!(),
         };
 
-        Ok((git_root, entry_point, glob_pattern, selectors))
+        Ok((repository_root, entry_point, glob_pattern, selectors))
     }
 
     // Expand an '@' pattern into all its matches, which are narrowed down by either the '@'
     // pattern's selectors, or selectors given from a CLI/TUI menu.
     fn expand_pattern(&self, pattern: &str) -> Result<Vec<String>> {
-        let (git_root, entry_point, glob_pattern, selector_group) = Self::parse_pattern(pattern)?;
+        let (repository_root, entry_point, glob_pattern, selector_group) =
+            Self::parse_pattern(pattern)?;
         let selector_group = selector_group.map(Self::parse_selectors).transpose()?;
 
         // Get list of all matches
         let mut paths = Vec::new();
         self.fetch_matches(
-            git_root,
+            repository_root,
             entry_point,
             glob_pattern,
             &mut paths,
