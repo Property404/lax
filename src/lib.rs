@@ -101,8 +101,13 @@ impl Expander {
         paths: &mut Vec<String>,
         selector_group: &Option<SelectorGroup>,
     ) -> Result<()> {
-        // Not a *super* helpful error message, but I'm unsure when this would come up
         if pattern.is_empty() {
+            // This way we can `cd @%` to cd to the repository root
+            if from_repository_root {
+                paths.push(get_repository_root()?.to_string_lossy().into_owned());
+                return Ok(());
+            }
+
             return Err(anyhow!(
                 "No glob pattern specified. \
                                Please see Lax's README for syntax"
@@ -148,21 +153,11 @@ impl Expander {
 
         // Possibly need to find the git/svn root
         let entry_point = if from_repository_root {
-            let mut cwd = env::current_dir()?;
-            while !cwd.join(".git").exists() && !cwd.join(".svn").exists() {
-                cwd = match cwd.parent() {
-                    Some(parent) => parent.into(),
-                    None => {
-                        return Err(anyhow!(
-                            "Cannot get repository root - this is not a git/svnc repo"
-                        ));
-                    }
-                }
-            }
+            let root = get_repository_root()?;
             if entry_point != "." {
-                cwd.join(entry_point)
+                root.join(entry_point)
             } else {
-                cwd
+                root
             }
         } else {
             PathBuf::from(entry_point)
@@ -453,6 +448,22 @@ impl Default for Config {
             search_hidden: false,
         }
     }
+}
+
+fn get_repository_root() -> Result<PathBuf> {
+    let mut cwd = env::current_dir()?;
+    while !cwd.join(".git").exists() && !cwd.join(".svn").exists() {
+        cwd = match cwd.parent() {
+            Some(parent) => parent.into(),
+            None => {
+                return Err(anyhow!(
+                    "Cannot get repository root - this is not a git/svnc repo"
+                ));
+            }
+        }
+    }
+
+    Ok(cwd)
 }
 
 #[cfg(test)]
