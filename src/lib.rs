@@ -154,7 +154,7 @@ impl Expander {
         // Possibly need to find the git/svn root
         let entry_point = if from_repository_root {
             let root = get_repository_root()?;
-            if entry_point != "." {
+            if entry_point != "." && entry_point != "/" {
                 root.join(entry_point)
             } else {
                 root
