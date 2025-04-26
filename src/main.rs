@@ -79,7 +79,7 @@ fn main() {
     let args = match expander.expand_arguments(args) {
         Ok(args) => args,
         Err(err) => {
-            eprintln!("lax: {}", err);
+            eprintln!("lax: {err}");
             process::exit(1)
         }
     };
@@ -97,12 +97,12 @@ fn main() {
         let mut err_message = None;
         for program in programs.split('|') {
             let err = Command::new(program).args(args).exec();
-            err_message = Some(format!("'{}': {}", program, err));
+            err_message = Some(format!("'{program}': {err}"));
         }
 
         // exec() should not have returned
         if let Some(err_message) = err_message {
-            eprintln!("lax: {}", err_message);
+            eprintln!("lax: {err_message}");
         } else {
             eprintln!("lax: No program ran");
         }

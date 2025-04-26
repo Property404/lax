@@ -388,10 +388,9 @@ impl Expander {
                 .map(|path| {
                     if fs::metadata(&path)?.is_dir() {
                         Ok(path)
+                    } else if let Some(parent) = Path::new(&path).parent() {
+                        Ok(parent.display().to_string())
                     } else {
-                        if let Some(parent) = Path::new(&path).parent() {
-                            return Ok(parent.display().to_string());
-                        };
                         Err(anyhow!("Could not get parent of file: \"{}\"", path))
                     }
                 })
