@@ -70,6 +70,13 @@ $ lax echo @*.rs^a # Select all matches
 a.rs b.rs c.rs d.rs
 $ lax echo @*.rs^/[ab] # Select with regex
 a.rs b.rs
+$ cat a.rs b.rs c.rs d.rs
+fn a() {panic!("You will be deboned");} // a.rs
+fn b() {panic!("You are powerless to stop me");} // b.rs
+fn c() {panic!("I can smell your bones from here.");} // c.rs
+fn d() {panic!("This is a nightmare. Wake up.");} // d.rs
+$ lax echo @*.rs^~bone # Select files whose contents match regex
+a.rs c.rs
 ```
 
 Now you know the full syntax for "@" patterns:
@@ -77,7 +84,7 @@ Now you know the full syntax for "@" patterns:
 `@[%][SEARCH_ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR[,SELECTOR]...]`
 
 Where `SEARCH_ENTRY_POINT` is a directory, `GLOB_PATTERN` is a glob pattern,
-and `SELECTOR` is `[-n..-1|1..n|'a'|'l'|/regex]`
+and `SELECTOR` is `[-n..-1|1..n|'a'|'l'|/regex|~regex]`
 
 ## Miscellaneous Features
 

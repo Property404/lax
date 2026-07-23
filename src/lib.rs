@@ -5,7 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{Result, anyhow, bail};
 use globset::GlobBuilder;
 use regex::Regex;
 use walkdir::{DirEntry, WalkDir};
@@ -33,10 +33,24 @@ enum Selector {
     FromFront(usize),
     FromBack(usize),
     Regex(String),
+    Grep(String),
 }
+
 #[derive(PartialEq, Debug)]
 struct SelectorGroup {
     selectors: Vec<Selector>,
+}
+
+#[derive(PartialEq, Debug)]
+struct Pattern<'a> {
+    // If true, start at `.git` or `.svn` root
+    from_repository_root: bool,
+    // Entry point to start searching from
+    entry_point: &'a str,
+    // Glob pattern to match against
+    glob_pattern: &'a str,
+    // Optional selector group to narrow down matches
+    selector_group: Option<SelectorGroup>,
 }
 
 impl SelectorGroup {
@@ -67,6 +81,22 @@ impl SelectorGroup {
                     let regex = Regex::new(regex)?;
                     selected_paths.extend(paths.iter().filter(|v| regex.is_match(v)).cloned());
                 }
+                Selector::Grep(regex) => {
+                    let regex = Regex::new(regex)?;
+                    // Check contents
+                    selected_paths.extend(
+                        paths
+                            .iter()
+                            .filter(|v| {
+                                if let Ok(contents) = fs::read_to_string(v) {
+                                    regex.is_match(&contents)
+                                } else {
+                                    false
+                                }
+                            })
+                            .cloned(),
+                    );
+                }
             }
         }
 
@@ -82,7 +112,7 @@ impl SelectorGroup {
                 Selector::FromFront(offset) => {
                     highest_index = std::cmp::max(*offset, highest_index);
                 }
-                Selector::FromBack(_) | Selector::All | Selector::Regex(_) => {
+                Selector::FromBack(_) | Selector::All | Selector::Regex(_) | Selector::Grep(_) => {
                     return None;
                 }
             }
@@ -95,17 +125,19 @@ impl Expander {
     /// Expand a entry point/glob pattern pair into all its potential matches.
     fn fetch_matches(
         &self,
-        from_repository_root: bool,
-        entry_point: &str,
-        mut pattern: &str,
-        paths: &mut Vec<String>,
-        selector_group: &Option<SelectorGroup>,
-    ) -> Result<()> {
-        if pattern.is_empty() {
+        &Pattern {
+            from_repository_root,
+            entry_point,
+            mut glob_pattern,
+            ref selector_group,
+        }: &Pattern,
+    ) -> Result<Vec<String>> {
+        let mut paths = Vec::new();
+        if glob_pattern.is_empty() {
             // This way we can `cd @%` to cd to the repository root
             if from_repository_root {
                 paths.push(get_repository_root()?.to_string_lossy().into_owned());
-                return Ok(());
+                return Ok(paths);
             }
 
             return Err(anyhow!(
@@ -117,8 +149,8 @@ impl Expander {
         // Match only with dirs if we end with '/'
         let match_with_dirs = self.config.match_with_dirs;
         let mut match_with_files = self.config.match_with_files;
-        if &pattern[pattern.len() - 1..] == "/" {
-            pattern = &pattern[0..pattern.len() - 1];
+        if &glob_pattern[glob_pattern.len() - 1..] == "/" {
+            glob_pattern = &glob_pattern[0..glob_pattern.len() - 1];
             match_with_files = false;
 
             if !match_with_dirs {
@@ -130,8 +162,8 @@ impl Expander {
             }
         }
 
-        let pattern = "./**/".to_string() + pattern;
-        let glob = GlobBuilder::new(pattern.as_str())
+        let glob_pattern = "./**/".to_string() + glob_pattern;
+        let glob = GlobBuilder::new(glob_pattern.as_str())
             .literal_separator(true)
             .build()?
             .compile_matcher();
@@ -164,12 +196,15 @@ impl Expander {
         };
 
         if !entry_point.exists() {
-            return Err(anyhow!("Entry point {:?} doesn't exist.\n\t\
+            return Err(anyhow!(
+                "Entry point {:?} doesn't exist.\n\t\
                                                Reminder: the \
                                                @pattern syntax is \
                                                \"@[%][ENTRY_POINT/**/]GLOB_PATTERN[^SELECTOR]\".\n\tMake sure \
                                                the bit before the first \"/**/\" is a valid \
-                                               directory", entry_point));
+                                               directory",
+                entry_point
+            ));
         }
 
         // Go to the entry point
@@ -185,33 +220,33 @@ impl Expander {
 
         let walker = WalkDir::new(".").into_iter();
         for e in walker.filter_entry(matcher).filter_map(|e| e.ok()) {
-            if let Some(path_name) = e.path().to_str() {
-                if glob.is_match(path_name) {
-                    // String comparison is a lot faster than fetching the metadata, so keep this
-                    // in the inner if block
-                    let metadata = e.metadata()?;
+            if let Some(path_name) = e.path().to_str()
+                && glob.is_match(path_name)
+            {
+                // String comparison is a lot faster than fetching the metadata, so keep this
+                // in the inner if block
+                let metadata = e.metadata()?;
 
-                    let matched = (match_with_dirs && (match_with_files || metadata.is_dir()))
-                        || (match_with_files && metadata.is_file());
+                let matched = (match_with_dirs && (match_with_files || metadata.is_dir()))
+                    || (match_with_files && metadata.is_file());
 
-                    if matched {
-                        let path_name = match path_name.strip_prefix("./") {
-                            Some(path_name) => path_name,
-                            None => path_name,
-                        };
-                        let mut result = entry_point.join(path_name).to_string_lossy().to_string();
-                        if metadata.is_dir() {
-                            result.push('/')
+                if matched {
+                    let path_name = match path_name.strip_prefix("./") {
+                        Some(path_name) => path_name,
+                        None => path_name,
+                    };
+                    let mut result = entry_point.join(path_name).to_string_lossy().to_string();
+                    if metadata.is_dir() {
+                        result.push('/')
+                    }
+                    paths.push(result);
+
+                    if let Some(quit_after_index) = quit_after_index {
+                        if quit_after_index == current_index {
+                            return Ok(paths);
                         }
-                        paths.push(result);
 
-                        if let Some(quit_after_index) = quit_after_index {
-                            if quit_after_index == current_index {
-                                return Ok(());
-                            }
-
-                            current_index += 1;
-                        }
+                        current_index += 1;
                     }
                 }
             }
@@ -220,7 +255,7 @@ impl Expander {
         // Head back to our original directory
         env::set_current_dir(cwd)?;
 
-        Ok(())
+        Ok(paths)
     }
 
     // Build a selector group from string.
@@ -243,6 +278,11 @@ impl Expander {
 
             if let Some(selector) = selector.strip_prefix('/') {
                 selectors.push(Selector::Regex(selector.into()));
+                continue;
+            }
+
+            if let Some(selector) = selector.strip_prefix('~') {
+                selectors.push(Selector::Grep(selector.into()));
                 continue;
             }
 
@@ -277,27 +317,35 @@ impl Expander {
     //
     // Where [%][ENTRY_POINT/**/]GLOB_PATTERN expands into multiple paths, and a selector
     // group(possibly SELECTOR_GROUP) is used to narrow them down
-    fn parse_pattern(pattern: &str) -> Result<(bool, &str, &str, Option<&str>)> {
+    fn parse_pattern<'a>(pattern: &'a str) -> Result<Pattern<'a>> {
         // Git rid of '@' symbol
-        let pattern = &pattern[1..];
+        let mut pattern = &pattern[1..];
 
         if pattern.is_empty() {
             bail!("Empty pattern - nothing specified after '@' symbol");
         }
 
-        // The "from repository root" modifier. This enables us to start the search from the git/svn root.
-        let (pattern, repository_root) = if let Some(pattern) = pattern.strip_prefix('%') {
-            (pattern, true)
-        // Faux "escape modifier" modifier, so we can escape what would otherwise be considered a
-        // modifier
-        } else if let Some(pattern) = pattern.strip_prefix('\\') {
-            (pattern, false)
-        } else {
-            (pattern, false)
-        };
+        // Parse modifiers
+        let mut repository_root = false;
+        loop {
+            if let Some(rest) = pattern.strip_prefix('%') {
+                repository_root = true;
+                pattern = rest;
+            } else if let Some(rest) = pattern.strip_prefix('\\') {
+                // Faux "escape modifier" modifier, so we can escape what would otherwise be
+                // considered a
+                //
+                // First non-modifier is end of modifiers so just break
+                pattern = rest;
+                break;
+            } else {
+                break;
+            }
+        }
 
+        // Split out selectors
+        // TODO: Can there be more than 2 after the split?
         let pattern = &mut pattern.split('^');
-
         let (pattern, selectors) = (
             pattern
                 .next()
@@ -329,31 +377,38 @@ impl Expander {
             (None, _) => unreachable!(),
         };
 
-        Ok((repository_root, entry_point, glob_pattern, selectors))
+        // Treat empty glob patterns as wild IFF there are selectors. This allows us to use
+        // selectors as a shortcut
+        let glob_pattern = if glob_pattern.is_empty() && selectors.is_some() {
+            "*"
+        } else {
+            glob_pattern
+        };
+
+        Ok(Pattern {
+            from_repository_root: repository_root,
+            entry_point,
+            glob_pattern,
+            selector_group: selectors.map(Self::parse_selectors).transpose()?,
+        })
     }
 
     // Expand an '@' pattern into all its matches, which are narrowed down by either the '@'
     // pattern's selectors, or selectors given from a CLI/TUI menu.
     fn expand_pattern(&self, pattern: &str) -> Result<Vec<String>> {
-        let (repository_root, entry_point, glob_pattern, selector_group) =
-            Self::parse_pattern(pattern)?;
-        let selector_group = selector_group.map(Self::parse_selectors).transpose()?;
+        let pattern = Self::parse_pattern(pattern)?;
 
         // Get list of all matches
-        let mut paths = Vec::new();
-        self.fetch_matches(
-            repository_root,
-            entry_point,
-            glob_pattern,
-            &mut paths,
-            &selector_group,
-        )?;
+        let mut paths = self.fetch_matches(&pattern)?;
 
         if paths.is_empty() {
-            return Err(anyhow!("Could not match pattern: \"{}\"", glob_pattern));
+            return Err(anyhow!(
+                "Could not match pattern: \"{}\"",
+                pattern.glob_pattern
+            ));
         }
 
-        if let Some(selector_group) = selector_group {
+        if let Some(selector_group) = pattern.selector_group {
             selector_group.select(&paths)
         } else {
             // One match - no need to bother the user.
@@ -503,28 +558,129 @@ mod tests {
     #[test]
     fn pattern_parsing() {
         let res = Expander::parse_pattern("@fish").unwrap();
-        assert_eq!(res, (false, ".", "fish", None));
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: false,
+                entry_point: ".",
+                glob_pattern: "fish",
+                selector_group: None,
+            }
+        );
 
-        let res = Expander::parse_pattern("@fish^tail").unwrap();
-        assert_eq!(res, (false, ".", "fish", Some("tail")));
+        let res = Expander::parse_pattern("@%fish").unwrap();
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: true,
+                entry_point: ".",
+                glob_pattern: "fish",
+                selector_group: None
+            }
+        );
 
-        let res = Expander::parse_pattern("@%head/**/fish^tail").unwrap();
-        assert_eq!(res, (true, "head", "fish", Some("tail")));
+        let res = Expander::parse_pattern("@\\%fish").unwrap();
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: false,
+                entry_point: ".",
+                glob_pattern: "%fish",
+                selector_group: None
+            }
+        );
+
+        let res = Expander::parse_pattern("@%\\%fish").unwrap();
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: true,
+                entry_point: ".",
+                glob_pattern: "%fish",
+                selector_group: None
+            }
+        );
+
+        let res = Expander::parse_pattern("@fish^~tail").unwrap();
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: false,
+                entry_point: ".",
+                glob_pattern: "fish",
+                selector_group: Some(SelectorGroup {
+                    selectors: vec![Selector::Grep("tail".into())]
+                }),
+            }
+        );
+
+        let res = Expander::parse_pattern("@%head/**/fish^~tail").unwrap();
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: true,
+                entry_point: "head",
+                glob_pattern: "fish",
+                selector_group: Some(SelectorGroup {
+                    selectors: vec![Selector::Grep("tail".into())]
+                }),
+            }
+        );
 
         let res = Expander::parse_pattern("@/**/fish").unwrap();
-        assert_eq!(res, (false, "/", "fish", None));
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: false,
+                entry_point: "/",
+                glob_pattern: "fish",
+                selector_group: None,
+            }
+        );
 
         let res = Expander::parse_pattern("@//**/fish").unwrap();
-        assert_eq!(res, (false, "/", "fish", None));
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: false,
+                entry_point: "/",
+                glob_pattern: "fish",
+                selector_group: None,
+            }
+        );
 
         let res = Expander::parse_pattern("@./**/fish").unwrap();
-        assert_eq!(res, (false, ".", "fish", None));
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: false,
+                entry_point: ".",
+                glob_pattern: "fish",
+                selector_group: None,
+            }
+        );
 
         let res = Expander::parse_pattern("@head/**/fish/**/tail").unwrap();
-        assert_eq!(res, (false, "head", "fish/**/tail", None));
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: false,
+                entry_point: "head",
+                glob_pattern: "fish/**/tail",
+                selector_group: None,
+            }
+        );
 
         let res = Expander::parse_pattern("@head/**/").unwrap();
-        assert_eq!(res, (false, "head", "*/", None));
+        assert_eq!(
+            res,
+            Pattern {
+                from_repository_root: false,
+                entry_point: "head",
+                glob_pattern: "*/",
+                selector_group: None,
+            }
+        );
     }
 
     // '/' implies matching only directories

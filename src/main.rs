@@ -89,6 +89,11 @@ fn main() {
     } else if ap.print_only {
         print!("{}", args.join(" "));
     } else {
+        if args.is_empty() {
+            eprintln!("lax: No program specified");
+            process::exit(1);
+        }
+
         // Go ahead and run the binary with the transformed arguments
         let programs = &args[0];
         let args = &args[1..];
